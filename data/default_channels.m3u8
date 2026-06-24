@@ -1,4 +1,10 @@
 #EXTM3U
+#EXTINF:-1,HD MAX 1
+http://13.51.56.140/hls/hdmax1/index.m3u8
+#EXTINF:-1,HD MAX 2
+http://13.51.56.140/hls/hdmax2/index.m3u8
+#EXTINF:-1,HD MAX 3
+http://13.51.56.140/hls/hdmax3/index.m3u8
 #EXTINF:-1,MAX 1
 http://13.51.56.140/hls/max1/index.m3u8
 #EXTINF:-1,MAX 2
