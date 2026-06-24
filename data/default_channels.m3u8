@@ -5,3 +5,9 @@ http://13.51.56.140/hls/max1/index.m3u8
 http://13.51.56.140/hls/max2/index.m3u8
 #EXTINF:-1,MAX 3
 http://13.51.56.140/hls/max3/index.m3u8
+#EXTINF:-1,DS MAX 1
+http://13.51.56.140/hls/dsmax1/index.m3u8
+#EXTINF:-1,DS MAX 2
+http://13.51.56.140/hls/dsmax2/index.m3u8
+#EXTINF:-1,MAX 4
+http://13.51.56.140/hls/max4/index.m3u8
