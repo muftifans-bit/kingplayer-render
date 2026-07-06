@@ -1,0 +1,3433 @@
+<!--
+  File: data/player_v2.html
+  IPTV Player v2 (Vanilla JS) - Smarters-like UI/UX
+  Requirements:
+   - DO NOT change backend or endpoints:
+      GET /api/m3u/default
+      GET /api/stream/probe
+      GET /api/stream/proxy
+   - Only libraries: HLS.js, mpegts.js
+   - No frameworks, no jQuery, no Bootstrap
+
+  Notes:
+   - Single <video> element is reused دائمًا (لا يتم إعادة إنشائه إلا عند الضرورة القصوى).
+   - أثناء إعادة الاتصال: نحافظ على آخر Frame ظاهر (بدون شاشة سوداء/وميض).
+   - عند تغيير القناة: نلتقط Freeze Frame (Canvas) لتجنب flicker عند تفريغ الـ MSE.
+-->
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
+  <meta name="color-scheme" content="dark" />
+  <title>IPTV Player v2</title>
+
+  <!-- Allowed libraries only -->
+  <script defer src="https://cdn.jsdelivr.net/npm/hls.js@1.5.17/dist/hls.min.js"></script>
+  <script defer src="https://cdn.jsdelivr.net/npm/mpegts.js@1.7.3/dist/mpegts.min.js"></script>
+
+  <style>
+    :root{
+      --bg0:#070A0F;
+      --bg1:#0B1020;
+      --glass: rgba(12, 18, 40, .62);
+      --glass2: rgba(12, 18, 40, .78);
+      --card: rgba(255,255,255,.06);
+      --card2: rgba(255,255,255,.045);
+      --stroke: rgba(255,255,255,.10);
+      --stroke2: rgba(255,255,255,.16);
+
+      --text:#EAF0FF;
+      --muted: rgba(234,240,255,.72);
+      --muted2: rgba(234,240,255,.56);
+
+      --brand:#5DA7FF;
+      --brand2:#8A5DFF;
+      --good:#27D17F;
+      --warn:#FFCA3A;
+      --bad:#FF4D6D;
+
+      --shadow: 0 18px 60px rgba(0,0,0,.52);
+      --shadow2: 0 10px 26px rgba(0,0,0,.38);
+      --radius: 18px;
+      --radius2: 14px;
+
+      --headerH: 66px;
+      --bottomH: 74px;
+      --sidebarW: 372px;
+
+      --font: system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, "Noto Sans Arabic", "Noto Sans", sans-serif;
+      --ease: cubic-bezier(.2,.8,.2,1);
+    }
+
+    *{ box-sizing:border-box; }
+    html, body{ height:100%; }
+    body{
+      margin:0;
+      font-family:var(--font);
+      color:var(--text);
+      background:
+        radial-gradient(1200px 700px at 15% -10%, rgba(93,167,255,.17), transparent 60%),
+        radial-gradient(900px 520px at 115% 5%, rgba(138,93,255,.14), transparent 55%),
+        linear-gradient(180deg, var(--bg0), var(--bg1));
+      overflow:hidden;
+    }
+
+    /* Scrollbar */
+    ::-webkit-scrollbar{ width:10px; height:10px; }
+    ::-webkit-scrollbar-thumb{ background:rgba(255,255,255,.12); border-radius:999px; }
+    ::-webkit-scrollbar-thumb:hover{ background:rgba(255,255,255,.18); }
+
+    /* Layout */
+    .app{ height:100%; display:flex; flex-direction:column; }
+
+    header{
+      height:var(--headerH);
+      padding: 10px 12px;
+      display:flex;
+      align-items:center;
+      gap:12px;
+      justify-content:space-between;
+      border-bottom:1px solid var(--stroke);
+      background: rgba(10,14,28,.70);
+      backdrop-filter: blur(14px);
+    }
+
+    .brand{
+      display:flex; align-items:center; gap:10px;
+      min-width: 240px;
+      user-select:none;
+    }
+    .brand-badge{
+      width:42px; height:42px;
+      border-radius: 14px;
+      background:
+        radial-gradient(16px 16px at 28% 22%, rgba(255,255,255,.22), transparent 60%),
+        linear-gradient(135deg, rgba(93,167,255,.95), rgba(138,93,255,.95));
+      border: 1px solid rgba(255,255,255,.18);
+      box-shadow: 0 16px 30px rgba(93,167,255,.12);
+      display:flex; align-items:center; justify-content:center;
+      flex: 0 0 auto;
+    }
+    .brand-badge svg{ width:22px; height:22px; opacity:.95; }
+    .brand-title{ min-width:0; }
+    .brand-title .t1{ font-size:14px; font-weight:900; letter-spacing:.2px; line-height:1.1; }
+    .brand-title .t2{
+      font-size:12px;
+      color: var(--muted2);
+      margin-top:3px;
+      white-space:nowrap;
+      overflow:hidden;
+      text-overflow:ellipsis;
+      max-width: 330px;
+    }
+
+    .header-center{
+      flex: 1;
+      display:flex;
+      align-items:center;
+      gap:10px;
+      max-width: 980px;
+      min-width: 280px;
+    }
+
+    .search{
+      flex: 1;
+      display:flex;
+      align-items:center;
+      gap:10px;
+      padding: 10px 12px;
+      border-radius: 16px;
+      background: rgba(255,255,255,.06);
+      border:1px solid var(--stroke);
+      box-shadow: inset 0 1px 0 rgba(255,255,255,.06);
+      min-width: 220px;
+    }
+    .search svg{ width:18px; height:18px; opacity:.85; }
+    .search input{
+      width:100%;
+      background: transparent;
+      border:0;
+      outline:0;
+      color: var(--text);
+      font-size:14px;
+    }
+    .search input::placeholder{ color: rgba(234,240,255,.45); }
+
+    .tabs{
+      display:flex;
+      align-items:center;
+      gap:8px;
+      padding: 6px;
+      border-radius: 16px;
+      background: rgba(255,255,255,.04);
+      border:1px solid var(--stroke);
+    }
+    .tab{
+      border:0;
+      cursor:pointer;
+      user-select:none;
+      color: var(--muted);
+      background: transparent;
+      padding: 10px 12px;
+      border-radius: 14px;
+      font-size: 13px;
+      display:flex;
+      align-items:center;
+      gap:8px;
+      transition: background .18s var(--ease), color .18s var(--ease), transform .12s var(--ease);
+    }
+    .tab svg{ width:16px; height:16px; opacity:.92; }
+    .tab:hover{ background: rgba(255,255,255,.06); }
+    .tab:active{ transform: translateY(1px); }
+    .tab.active{
+      background: rgba(93,167,255,.14);
+      color: var(--text);
+      border:1px solid rgba(93,167,255,.20);
+    }
+    .tab:focus-visible{ outline:2px solid rgba(93,167,255,.45); outline-offset:2px; }
+
+    .header-right{
+      display:flex;
+      align-items:center;
+      gap:10px;
+      justify-content:flex-end;
+      min-width: 320px;
+    }
+
+    .pill{
+      display:flex;
+      align-items:center;
+      gap:8px;
+      padding: 8px 10px;
+      border-radius: 999px;
+      border: 1px solid var(--stroke);
+      background: rgba(255,255,255,.04);
+      font-size: 12px;
+      color: var(--muted);
+      user-select:none;
+      white-space:nowrap;
+    }
+    .pill strong{ color: rgba(234,240,255,.92); font-weight:900; }
+    .dot{
+      width:8px; height:8px; border-radius:50%;
+      background: rgba(255,255,255,.5);
+      box-shadow: 0 0 0 5px rgba(255,255,255,.06);
+    }
+    .dot.online{ background: var(--good); box-shadow: 0 0 0 5px rgba(39,209,127,.12); }
+    .dot.offline{ background: var(--bad); box-shadow: 0 0 0 5px rgba(255,77,109,.14); }
+
+    /* Main */
+    .main{
+      flex: 1;
+      min-height:0;
+      display:flex;
+    }
+
+    /* Sidebar */
+    aside{
+      width: var(--sidebarW);
+      min-height:0;
+      display:flex;
+      flex-direction:column;
+      border-left: 1px solid var(--stroke);
+      background: rgba(8,12,24,.62);
+      backdrop-filter: blur(16px);
+    }
+
+    .side-top{
+      padding: 12px;
+      border-bottom:1px solid var(--stroke);
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap:10px;
+    }
+    .side-top .meta{
+      display:flex;
+      flex-direction:column;
+      gap:2px;
+      min-width:0;
+    }
+    .side-top .meta .c1{ font-size:12px; color: var(--muted2); }
+    .side-top .meta .c2{ font-size:12px; color: rgba(234,240,255,.70); }
+
+    .btn{
+      border: 1px solid var(--stroke);
+      background: rgba(255,255,255,.05);
+      color: rgba(234,240,255,.92);
+      border-radius: 14px;
+      padding: 9px 10px;
+      font-size: 12px;
+      cursor:pointer;
+      user-select:none;
+      transition: background .16s var(--ease), transform .12s var(--ease), border-color .16s var(--ease);
+      display:flex;
+      align-items:center;
+      gap:8px;
+    }
+    .btn:hover{ background: rgba(255,255,255,.08); border-color: rgba(255,255,255,.14); }
+    .btn:active{ transform: translateY(1px); }
+    .btn:focus-visible{ outline:2px solid rgba(93,167,255,.45); outline-offset:2px; }
+    .btn svg{ width:16px; height:16px; opacity:.92; }
+
+    .side-tools{
+      padding: 10px 12px;
+      display:flex;
+      gap:10px;
+      align-items:center;
+      border-bottom: 1px solid rgba(255,255,255,.06);
+    }
+    .select{
+      flex:1;
+      display:flex;
+      align-items:center;
+      gap:8px;
+      padding: 10px 12px;
+      border-radius: 14px;
+      border:1px solid var(--stroke);
+      background: rgba(255,255,255,.04);
+    }
+    .select label{ font-size:12px; color: var(--muted2); }
+    .select select{
+      flex:1;
+      background: transparent;
+      color: rgba(234,240,255,.92);
+      border:0;
+      outline:0;
+      font-size: 12px;
+    }
+
+    .list{
+      flex:1;
+      min-height:0;
+      overflow:auto;
+      padding: 10px;
+    }
+
+    .group{
+      margin: 10px 0;
+      border: 1px solid rgba(255,255,255,.06);
+      background: rgba(255,255,255,.03);
+      border-radius: 16px;
+      overflow:hidden;
+    }
+    .group-h{
+      padding: 10px 12px;
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap:10px;
+      border-bottom: 1px solid rgba(255,255,255,.06);
+      background: rgba(0,0,0,.14);
+    }
+    .group-h .name{
+      font-size: 12px;
+      color: rgba(234,240,255,.72);
+      display:flex;
+      align-items:center;
+      gap:10px;
+      min-width:0;
+      white-space:nowrap;
+      overflow:hidden;
+      text-overflow:ellipsis;
+    }
+    .group-h .count{
+      font-size: 12px;
+      color: rgba(234,240,255,.55);
+    }
+
+    .item{
+      display:flex;
+      align-items:center;
+      gap:10px;
+      padding: 10px 10px;
+      cursor:pointer;
+      user-select:none;
+      border-top: 1px solid rgba(255,255,255,.05);
+      background: rgba(255,255,255,.00);
+      outline:none;
+      transition: background .16s var(--ease);
+    }
+    .item:first-child{ border-top:0; }
+    .item:hover{ background: rgba(255,255,255,.05); }
+    .item.active{
+      background: rgba(93,167,255,.12);
+    }
+    .item:focus-visible{
+      outline:2px solid rgba(93,167,255,.45);
+      outline-offset: -2px;
+    }
+
+    .logo{
+      width:44px; height:44px;
+      border-radius: 14px;
+      border:1px solid rgba(255,255,255,.10);
+      background:
+        radial-gradient(18px 18px at 28% 22%, rgba(255,255,255,.12), transparent 60%),
+        linear-gradient(135deg, rgba(93,167,255,.14), rgba(138,93,255,.12));
+      overflow:hidden;
+      flex: 0 0 auto;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+    }
+    .logo img{ width:100%; height:100%; object-fit:cover; display:block; }
+    .ph{
+      width:100%; height:100%;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      font-weight: 1000;
+      letter-spacing:.4px;
+      color: rgba(255,255,255,.92);
+      background:
+        radial-gradient(18px 18px at 28% 22%, rgba(255,255,255,.14), transparent 60%),
+        linear-gradient(135deg, rgba(93,167,255,.30), rgba(138,93,255,.25));
+    }
+
+    .meta{
+      flex:1;
+      min-width:0;
+    }
+    .meta .n{
+      font-size: 14px;
+      color: rgba(234,240,255,.95);
+      white-space:nowrap;
+      overflow:hidden;
+      text-overflow:ellipsis;
+    }
+    .meta .g{
+      margin-top:3px;
+      font-size: 12px;
+      color: rgba(234,240,255,.55);
+      white-space:nowrap;
+      overflow:hidden;
+      text-overflow:ellipsis;
+    }
+
+    .actions{
+      display:flex;
+      align-items:center;
+      gap:8px;
+      flex:0 0 auto;
+    }
+    .fav{
+      width:34px; height:34px;
+      border-radius: 12px;
+      border:1px solid rgba(255,255,255,.10);
+      background: rgba(255,255,255,.04);
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      cursor:pointer;
+      transition: transform .12s var(--ease), background .14s var(--ease), border-color .14s var(--ease);
+    }
+    .fav:hover{ background: rgba(255,255,255,.07); }
+    .fav:active{ transform: translateY(1px); }
+    .fav.on{
+      border-color: rgba(255,202,58,.22);
+      background: rgba(255,202,58,.10);
+    }
+    .fav svg{ width:16px; height:16px; opacity:.95; }
+
+    /* Content / Player */
+    .content{
+      flex:1;
+      min-width:0;
+      min-height:0;
+      display:flex;
+      flex-direction:column;
+    }
+
+    .player{
+      flex:1;
+      min-height:0;
+      margin: 12px;
+      border-radius: var(--radius);
+      overflow:hidden;
+      position:relative;
+      border:1px solid rgba(255,255,255,.10);
+      background:
+        radial-gradient(900px 500px at 10% 0%, rgba(93,167,255,.10), transparent 55%),
+        radial-gradient(800px 450px at 110% 10%, rgba(138,93,255,.10), transparent 55%),
+        rgba(0,0,0,.40);
+      box-shadow: var(--shadow);
+    }
+
+    video#video{
+      width:100%;
+      height:100%;
+      background:#000;
+      display:block;
+      object-fit: contain;
+    }
+
+    /* Freeze frame canvas - used ONLY when we must clear/detach MSE to prevent flicker/black */
+    .freeze{
+      position:absolute;
+      inset:0;
+      width:100%;
+      height:100%;
+      display:none;
+      z-index: 2;
+      background: #000;
+    }
+    .freeze.show{ display:block; }
+
+    /* Top overlay (Smarters-like badges) */
+    .top-overlay{
+      position:absolute;
+      top: 12px;
+      left: 12px;
+      right: 12px;
+      display:flex;
+      align-items:flex-start;
+      justify-content:space-between;
+      gap: 12px;
+      z-index: 5;
+      pointer-events:none;
+    }
+    .badges{
+      display:flex;
+      align-items:center;
+      gap:10px;
+      pointer-events:none;
+    }
+    .badge{
+      display:flex;
+      align-items:center;
+      gap:8px;
+      padding: 8px 10px;
+      border-radius: 999px;
+      border: 1px solid rgba(255,255,255,.12);
+      background: rgba(0,0,0,.22);
+      backdrop-filter: blur(10px);
+      box-shadow: var(--shadow2);
+      font-size: 12px;
+      color: rgba(234,240,255,.88);
+    }
+    .live{
+      border-color: rgba(255,77,109,.28);
+      background: rgba(255,77,109,.14);
+      font-weight: 1000;
+      letter-spacing:.25px;
+      text-transform: uppercase;
+      color: rgba(255,255,255,.95);
+    }
+    .live .ld{
+      width:8px; height:8px; border-radius:50%;
+      background: var(--bad);
+      box-shadow: 0 0 0 6px rgba(255,77,109,.12);
+    }
+
+    .channel-mini{
+      max-width: 48vw;
+      display:flex;
+      align-items:center;
+      gap:10px;
+      padding: 8px 10px;
+      border-radius: 16px;
+      border: 1px solid rgba(255,255,255,.12);
+      background: rgba(0,0,0,.22);
+      backdrop-filter: blur(10px);
+      box-shadow: var(--shadow2);
+      pointer-events:none;
+    }
+    .channel-mini .mini-logo{
+      width:34px; height:34px;
+      border-radius: 12px;
+      overflow:hidden;
+      border:1px solid rgba(255,255,255,.12);
+      background: rgba(255,255,255,.06);
+      display:flex; align-items:center; justify-content:center;
+      flex:0 0 auto;
+    }
+    .channel-mini .mini-logo img{ width:100%; height:100%; object-fit:cover; display:block; }
+    .channel-mini .txt{ min-width:0; }
+    .channel-mini .txt .n{
+      font-size: 13px;
+      font-weight: 900;
+      white-space:nowrap;
+      overflow:hidden;
+      text-overflow:ellipsis;
+    }
+    .channel-mini .txt .g{
+      margin-top:2px;
+      font-size: 12px;
+      color: rgba(234,240,255,.58);
+      white-space:nowrap;
+      overflow:hidden;
+      text-overflow:ellipsis;
+    }
+
+    /* Bottom overlay controls */
+    .controls{
+      position:absolute;
+      left: 0; right: 0; bottom: 0;
+      padding: 12px 12px 12px;
+      z-index: 6;
+      display:flex;
+      align-items:flex-end;
+      justify-content:space-between;
+      gap: 12px;
+      background: linear-gradient(180deg, transparent 0%, rgba(0,0,0,.46) 42%, rgba(0,0,0,.72) 100%);
+      pointer-events:auto;
+      opacity: 1;
+      transition: opacity .18s var(--ease), transform .18s var(--ease);
+    }
+    .controls.hide{
+      opacity: 0;
+      transform: translateY(8px);
+      pointer-events:none;
+    }
+
+    .ctrl-l, .ctrl-r{
+      display:flex;
+      align-items:center;
+      gap:10px;
+    }
+
+    .icbtn{
+      width:44px; height:44px;
+      border-radius: 16px;
+      border:1px solid rgba(255,255,255,.12);
+      background: rgba(255,255,255,.06);
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      cursor:pointer;
+      user-select:none;
+      transition: transform .12s var(--ease), background .16s var(--ease), border-color .16s var(--ease);
+    }
+    .icbtn:hover{ background: rgba(255,255,255,.10); border-color: rgba(255,255,255,.16); }
+    .icbtn:active{ transform: translateY(1px); }
+    .icbtn:focus-visible{ outline:2px solid rgba(93,167,255,.45); outline-offset:2px; }
+    .icbtn svg{ width:18px; height:18px; opacity:.95; }
+
+    .vol{
+      display:flex;
+      align-items:center;
+      gap:10px;
+      padding: 10px 12px;
+      border-radius: 16px;
+      border:1px solid rgba(255,255,255,.12);
+      background: rgba(255,255,255,.06);
+      min-width: 220px;
+    }
+    .vol label{ font-size:12px; color: rgba(234,240,255,.78); font-weight:800; }
+    .vol .val{ font-size:12px; color: rgba(234,240,255,.72); width:40px; text-align:left; }
+
+    input[type="range"]{
+      -webkit-appearance:none;
+      appearance:none;
+      height: 4px;
+      width: 140px;
+      background: rgba(255,255,255,.20);
+      border-radius: 999px;
+      outline:none;
+    }
+    input[type="range"]::-webkit-slider-thumb{
+      -webkit-appearance:none;
+      appearance:none;
+      width:16px; height:16px;
+      border-radius: 50%;
+      background: rgba(93,167,255,.96);
+      border: 2px solid rgba(255,255,255,.20);
+      box-shadow: 0 10px 26px rgba(93,167,255,.16);
+    }
+
+    /* Quality menu */
+    .qwrap{ position:relative; }
+    .menu{
+      position:absolute;
+      bottom: 54px;
+      left: 0;
+      min-width: 220px;
+      border-radius: 16px;
+      overflow:hidden;
+      border: 1px solid rgba(255,255,255,.12);
+      background: rgba(10,14,28,.92);
+      backdrop-filter: blur(14px);
+      box-shadow: var(--shadow);
+      display:none;
+      z-index: 30;
+    }
+    .menu.show{ display:block; }
+    .mi{
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap:10px;
+      padding: 11px 12px;
+      border-bottom: 1px solid rgba(255,255,255,.06);
+      cursor:pointer;
+      user-select:none;
+      font-size: 13px;
+      color: rgba(234,240,255,.90);
+    }
+    .mi:last-child{ border-bottom:0; }
+    .mi:hover{ background: rgba(255,255,255,.06); }
+    .mi.active{ background: rgba(93,167,255,.12); }
+    .mi .tag{
+      font-size: 11px;
+      color: rgba(234,240,255,.58);
+    }
+
+    /* Loading overlay (transparent: keeps last video frame visible) */
+    .overlay{
+      position:absolute;
+      inset:0;
+      z-index: 8;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      pointer-events:none;
+      opacity: 0;
+      transition: opacity .18s var(--ease);
+    }
+    .overlay.show{ opacity: 1; }
+    .overlay .panel{
+      pointer-events:none;
+      padding: 14px 14px;
+      border-radius: 18px;
+      border: 1px solid rgba(255,255,255,.14);
+      background: rgba(10,14,28,.62);
+      backdrop-filter: blur(16px);
+      box-shadow: var(--shadow);
+      display:flex;
+      align-items:center;
+      gap:12px;
+      max-width: min(620px, 92vw);
+    }
+    .spin{
+      width: 40px; height: 40px;
+      border-radius: 50%;
+      border: 3px solid rgba(255,255,255,.14);
+      border-top-color: rgba(93,167,255,.96);
+      animation: spin .9s linear infinite;
+      flex: 0 0 auto;
+    }
+    @keyframes spin{ to{ transform: rotate(360deg);} }
+    .overlay .txt{ min-width:0; }
+    .overlay .txt .t{
+      font-size: 14px;
+      font-weight: 1000;
+      color: rgba(234,240,255,.96);
+      letter-spacing:.2px;
+    }
+    .overlay .txt .m{
+      margin-top:3px;
+      font-size: 12px;
+      color: rgba(234,240,255,.66);
+      white-space:nowrap;
+      overflow:hidden;
+      text-overflow:ellipsis;
+    }
+
+    /* Bottom info bar */
+    .bottom{
+      height: var(--bottomH);
+      padding: 10px 12px;
+      border-top:1px solid var(--stroke);
+      background: rgba(10,14,28,.70);
+      backdrop-filter: blur(14px);
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap: 12px;
+    }
+    .b-left{
+      display:flex;
+      align-items:center;
+      gap:12px;
+      min-width:0;
+      flex:1;
+    }
+    .b-logo{
+      width:46px; height:46px;
+      border-radius: 16px;
+      border: 1px solid rgba(255,255,255,.10);
+      background: rgba(255,255,255,.06);
+      overflow:hidden;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      flex: 0 0 auto;
+    }
+    .b-logo img{ width:100%; height:100%; object-fit:cover; display:block; }
+    .b-meta{ min-width:0; }
+    .b-meta .title{
+      font-size: 14px;
+      font-weight: 1000;
+      white-space:nowrap;
+      overflow:hidden;
+      text-overflow:ellipsis;
+    }
+    .b-meta .sub{
+      margin-top:2px;
+      font-size: 12px;
+      color: rgba(234,240,255,.56);
+      white-space:nowrap;
+      overflow:hidden;
+      text-overflow:ellipsis;
+    }
+    .b-actions{
+      display:flex;
+      align-items:center;
+      gap:10px;
+      flex:0 0 auto;
+    }
+
+    .stats{
+      display:flex;
+      align-items:center;
+      gap:8px;
+      justify-content:flex-end;
+      flex-wrap:wrap;
+      min-width: 520px;
+    }
+    .stat{
+      font-size: 12px;
+      color: rgba(234,240,255,.78);
+      padding: 8px 10px;
+      border-radius: 999px;
+      border: 1px solid rgba(255,255,255,.10);
+      background: rgba(255,255,255,.04);
+      white-space:nowrap;
+      user-select:none;
+    }
+    .stat strong{ color: rgba(234,240,255,.95); font-weight:1000; }
+
+    /* Toasts */
+    .toasts{
+      position: fixed;
+      top: calc(var(--headerH) + 12px);
+      right: 12px;
+      z-index: 120;
+      display:flex;
+      flex-direction:column;
+      gap: 10px;
+      pointer-events:none;
+    }
+    .toast{
+      pointer-events:none;
+      max-width: min(560px, 92vw);
+      padding: 12px 12px;
+      border-radius: 16px;
+      border: 1px solid rgba(255,255,255,.14);
+      background: rgba(10,14,28,.88);
+      backdrop-filter: blur(14px);
+      box-shadow: var(--shadow2);
+      color: rgba(234,240,255,.92);
+      font-size: 13px;
+      transform: translateY(-8px);
+      opacity: 0;
+      transition: transform .22s var(--ease), opacity .22s var(--ease);
+    }
+    .toast.show{ transform: translateY(0); opacity: 1; }
+    .toast.ok{ border-color: rgba(39,209,127,.22); }
+    .toast.warn{ border-color: rgba(255,202,58,.22); }
+    .toast.bad{ border-color: rgba(255,77,109,.22); }
+
+    /* Responsive */
+    @media (max-width: 1050px){
+      :root{ --sidebarW: 340px; }
+      .stats{ min-width: 360px; }
+    }
+    @media (max-width: 900px){
+      .tabs{ display:none; }
+      .header-right{ min-width: 220px; }
+      .stats{ display:none; }
+    }
+    @media (max-width: 820px){
+      aside{ display:none; }
+      .brand-title .t2{ display:none; }
+      .header-right{ display:none; }
+    }
+  </style>
+</head>
+
+<body>
+  <div class="app">
+    <header>
+      <div class="brand">
+        <div class="brand-badge" aria-hidden="true">
+          <svg viewBox="0 0 24 24" fill="none">
+            <path d="M4 7.2C4 5.985 4.985 5 6.2 5h11.6C19.015 5 20 5.985 20 7.2v9.6c0 1.215-.985 2.2-2.2 2.2H6.2C4.985 19 4 18.015 4 16.8V7.2Z" stroke="rgba(255,255,255,.9)" stroke-width="1.6"/>
+            <path d="M10 9.5 15 12l-5 2.5V9.5Z" fill="rgba(255,255,255,.9)"/>
+          </svg>
+        </div>
+        <div class="brand-title">
+          <div class="t1">IPTV Player v2</div>
+          <div class="t2" id="hdrSub">واجهة وأداء قريب من IPTV Smarters Pro (نفس API)</div>
+        </div>
+      </div>
+
+      <div class="header-center">
+        <div class="search" role="search">
+          <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+            <path d="M10.5 18.5a8 8 0 1 1 0-16 8 8 0 0 1 0 16Z" stroke="rgba(255,255,255,.85)" stroke-width="1.6"/>
+            <path d="M16.6 16.6 21 21" stroke="rgba(255,255,255,.85)" stroke-width="1.6" stroke-linecap="round"/>
+          </svg>
+          <input id="searchInput" type="text" placeholder="ابحث عن قناة / مجموعة..." autocomplete="off" inputmode="search" />
+        </div>
+
+        <div class="tabs" aria-label="Tabs">
+          <button class="tab active" id="tabAll" type="button" data-tab="all">
+            <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+              <path d="M4 6.5h16M4 12h16M4 17.5h16" stroke="rgba(255,255,255,.85)" stroke-width="1.6" stroke-linecap="round"/>
+            </svg>
+            الكل
+          </button>
+          <button class="tab" id="tabFav" type="button" data-tab="fav">
+            <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+              <path d="M12 17.3 6.8 20l1-5.7L3.6 10.6l5.8-.8L12 4.5l2.6 5.3 5.8.8-4.2 3.7 1 5.7L12 17.3Z" stroke="rgba(255,255,255,.85)" stroke-width="1.4" stroke-linejoin="round"/>
+            </svg>
+            المفضلة
+          </button>
+          <button class="tab" id="tabRecent" type="button" data-tab="recent">
+            <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+              <path d="M12 8v5l3 2" stroke="rgba(255,255,255,.85)" stroke-width="1.6" stroke-linecap="round"/>
+              <path d="M21 12a9 9 0 1 1-2.64-6.36" stroke="rgba(255,255,255,.85)" stroke-width="1.6" stroke-linecap="round"/>
+            </svg>
+            الأخيرة
+          </button>
+        </div>
+      </div>
+
+      <div class="header-right">
+        <div class="pill" title="Online/Offline">
+          <span class="dot" id="netDot"></span>
+          <span id="netText">...</span>
+        </div>
+        <div class="pill" title="Bandwidth">
+          <span style="opacity:.9">BW</span>
+          <strong id="bwText">--</strong>
+        </div>
+        <div class="pill" title="Latency (RTT)">
+          <span style="opacity:.9">RTT</span>
+          <strong id="rttText">--</strong>
+        </div>
+        <div class="pill" title="Quality">
+          <span style="opacity:.9">Q</span>
+          <strong id="qText">Auto</strong>
+        </div>
+      </div>
+    </header>
+
+    <div class="main">
+      <div class="content">
+        <div class="player" id="playerWrap">
+          <video id="video" playsinline webkit-playsinline preload="auto"></video>
+
+          <!-- Freeze frame canvas (prevents black/flicker when we must clear/detach) -->
+          <canvas id="freezeCanvas" class="freeze"></canvas>
+
+          <div class="top-overlay">
+            <div class="badges">
+              <div class="badge live"><span class="ld" aria-hidden="true"></span>LIVE</div>
+              <div class="badge" id="qualityBadge">Auto</div>
+              <div class="badge" id="typeBadge">—</div>
+            </div>
+
+            <div class="channel-mini" id="channelMini" style="display:none;">
+              <div class="mini-logo" id="miniLogo"></div>
+              <div class="txt">
+                <div class="n" id="miniName">—</div>
+                <div class="g" id="miniGroup">—</div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Reconnect/Loading overlay (keeps last frame visible) -->
+          <div class="overlay show" id="overlay" aria-live="polite">
+            <div class="panel">
+              <div class="spin" aria-hidden="true"></div>
+              <div class="txt">
+                <div class="t" id="ovTitle">جاري التحضير...</div>
+                <div class="m" id="ovMsg">تحميل المشغل والقنوات</div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Controls -->
+          <div class="controls" id="controls">
+            <div class="ctrl-l">
+              <button class="icbtn" id="btnPlay" type="button" title="Play/Pause (Space)">
+                <svg id="icoPlay" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                  <path d="M10 7.5v9l7-4.5-7-4.5Z" fill="rgba(255,255,255,.92)"/>
+                </svg>
+                <svg id="icoPause" viewBox="0 0 24 24" fill="none" aria-hidden="true" style="display:none">
+                  <path d="M7.5 6.5h3.6v11H7.5v-11Zm5.4 0h3.6v11h-3.6v-11Z" fill="rgba(255,255,255,.92)"/>
+                </svg>
+              </button>
+
+              <button class="icbtn" id="btnMute" type="button" title="Mute (M)">
+                <svg id="icoVolOn" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                  <path d="M4 10v4h3l4 3V7L7 10H4Z" fill="rgba(255,255,255,.92)"/>
+                  <path d="M16 9c1.1 1.1 1.1 4.9 0 6" stroke="rgba(255,255,255,.92)" stroke-width="1.6" stroke-linecap="round"/>
+                  <path d="M18.8 7c2.2 2.2 2.2 7.8 0 10" stroke="rgba(255,255,255,.70)" stroke-width="1.4" stroke-linecap="round"/>
+                </svg>
+                <svg id="icoVolOff" viewBox="0 0 24 24" fill="none" aria-hidden="true" style="display:none">
+                  <path d="M4 10v4h3l4 3V7L7 10H4Z" fill="rgba(255,255,255,.92)"/>
+                  <path d="M16 10l4 4M20 10l-4 4" stroke="rgba(255,255,255,.92)" stroke-width="1.6" stroke-linecap="round"/>
+                </svg>
+              </button>
+
+              <div class="vol" title="Volume (ArrowUp/ArrowDown)">
+                <label for="volRange">VOL</label>
+                <input id="volRange" type="range" min="0" max="100" value="70" />
+                <div class="val" id="volVal">70%</div>
+              </div>
+            </div>
+
+            <div class="ctrl-r">
+              <div class="qwrap">
+                <button class="icbtn" id="btnQuality" type="button" title="Quality">
+                  <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                    <path d="M5 7h14M5 12h10M5 17h6" stroke="rgba(255,255,255,.92)" stroke-width="1.6" stroke-linecap="round"/>
+                  </svg>
+                </button>
+                <div class="menu" id="qMenu" role="menu" aria-label="Quality Menu"></div>
+              </div>
+
+              <button class="icbtn" id="btnPiP" type="button" title="Picture in Picture">
+                <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                  <path d="M5 6.5h14c.8 0 1.5.7 1.5 1.5v8c0 .8-.7 1.5-1.5 1.5H5c-.8 0-1.5-.7-1.5-1.5V8c0-.8.7-1.5 1.5-1.5Z" stroke="rgba(255,255,255,.88)" stroke-width="1.4"/>
+                  <path d="M12.5 12.5h6v4.5h-6v-4.5Z" fill="rgba(255,255,255,.20)" stroke="rgba(255,255,255,.88)" stroke-width="1.2"/>
+                </svg>
+              </button>
+
+              <button class="icbtn" id="btnFull" type="button" title="Fullscreen (F)">
+                <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                  <path d="M8 4H4v4M16 4h4v4M8 20H4v-4M16 20h4v-4" stroke="rgba(255,255,255,.92)" stroke-width="1.6" stroke-linecap="round"/>
+                </svg>
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <div class="bottom">
+          <div class="b-left">
+            <div class="b-logo" id="infoLogo"></div>
+            <div class="b-meta">
+              <div class="title" id="infoTitle">—</div>
+              <div class="sub" id="infoSub">—</div>
+            </div>
+          </div>
+
+          <div class="b-actions">
+            <button class="btn" id="btnFavToggle" type="button" title="Favorite">
+              <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                <path d="M12 17.3 6.8 20l1-5.7L3.6 10.6l5.8-.8L12 4.5l2.6 5.3 5.8.8-4.2 3.7 1 5.7L12 17.3Z" stroke="rgba(255,255,255,.85)" stroke-width="1.4" stroke-linejoin="round"/>
+              </svg>
+              <span id="favToggleText">إضافة للمفضلة</span>
+            </button>
+          </div>
+
+          <div class="stats" aria-label="Stats">
+            <div class="stat">Buffer <strong id="stBuffer">--</strong></div>
+            <div class="stat">Bitrate <strong id="stBitrate">--</strong></div>
+            <div class="stat">FPS <strong id="stFps">--</strong></div>
+            <div class="stat">Dropped <strong id="stDrop">--</strong></div>
+            <div class="stat">Res <strong id="stRes">--</strong></div>
+            <div class="stat">Live Δ <strong id="stDelay">--</strong></div>
+            <div class="stat">Type <strong id="stType">--</strong></div>
+          </div>
+        </div>
+      </div>
+
+      <aside>
+        <div class="side-top">
+          <div class="meta">
+            <div class="c1"><span id="chCount">0</span> قناة</div>
+            <div class="c2">مرشح: <span id="visCount">0</span></div>
+          </div>
+          <button class="btn" id="btnReload" type="button" title="Reload list">
+            <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+              <path d="M20 12a8 8 0 1 1-2.35-5.65" stroke="rgba(255,255,255,.9)" stroke-width="1.6" stroke-linecap="round"/>
+              <path d="M20 4v6h-6" stroke="rgba(255,255,255,.9)" stroke-width="1.6" stroke-linecap="round"/>
+            </svg>
+            تحديث
+          </button>
+        </div>
+
+        <div class="side-tools">
+          <div class="select" title="Sorting">
+            <label for="sortSel">Sort</label>
+            <select id="sortSel">
+              <option value="group_az" selected>Group + A→Z</option>
+              <option value="az">A→Z</option>
+              <option value="za">Z→A</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="list" id="list" tabindex="0" aria-label="Channel List"></div>
+      </aside>
+    </div>
+  </div>
+
+  <div class="toasts" id="toasts"></div>
+
+<script>
+(() => {
+  'use strict';
+
+  /******************************************************************
+   * Endpoints (MUST NOT CHANGE)
+   ******************************************************************/
+  const API = Object.freeze({
+    m3uDefault: '/api/m3u/default',
+    probe: '/api/stream/probe',
+    proxy: '/api/stream/proxy'
+  });
+
+  /******************************************************************
+   * Small Utilities
+   ******************************************************************/
+  const $ = (sel, root=document) => root.querySelector(sel);
+  const clamp = (n,a,b) => Math.max(a, Math.min(b, n));
+
+  function escapeHtml(str){
+    return String(str ?? '').replace(/[&<>"']/g, c => ({
+      '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'
+    }[c]));
+  }
+
+  function proxyUrl(u){
+    if (!u) return '';
+    if (u.startsWith(API.proxy)) return u;
+    return `${API.proxy}?url=${encodeURIComponent(u)}`;
+  }
+
+  function resolveAgainstBase(maybeRelativeUrl, baseUrl){
+    try{ return new URL(maybeRelativeUrl, baseUrl).toString(); }
+    catch{ return maybeRelativeUrl; }
+  }
+
+  function isProbablyHls(url){
+    const u = String(url||'').toLowerCase();
+    return u.includes('.m3u8') || u.includes('m3u8');
+  }
+  function isProbablyMpegTs(url){
+    const u = String(url||'').toLowerCase();
+    return u.includes('.ts') || u.includes('mpegts') || u.startsWith('udp:') || u.startsWith('rtp:');
+  }
+
+  function fmtMbps(bitsPerSec){
+    if (!Number.isFinite(bitsPerSec) || bitsPerSec <= 0) return '--';
+    const mbps = bitsPerSec / 1e6;
+    return mbps >= 10 ? `${mbps.toFixed(1)} Mbps` : `${mbps.toFixed(2)} Mbps`;
+  }
+  function fmtKbps(bitsPerSec){
+    if (!Number.isFinite(bitsPerSec) || bitsPerSec <= 0) return '--';
+    const kbps = bitsPerSec / 1000;
+    return kbps >= 1000 ? `${(kbps/1000).toFixed(2)} Mbps` : `${kbps.toFixed(0)} kbps`;
+  }
+  function fmtMs(ms){
+    if (!Number.isFinite(ms) || ms <= 0) return '--';
+    return `${Math.round(ms)} ms`;
+  }
+
+  // Arabic-friendly normalization (diacritics stripping + case fold)
+  function normalizeSearch(s){
+    const v = String(s ?? '').toLowerCase().normalize('NFKD');
+    // remove diacritics/marks + tatweel
+    return v
+      .replace(/[\u0640]/g,'')
+      .replace(/[\u0610-\u061A\u064B-\u065F\u0670\u06D6-\u06ED]/g,'')
+      .replace(/\p{M}/gu,'')
+      .trim();
+  }
+
+  function wait(ms){ return new Promise(r => setTimeout(r, ms)); }
+
+  async function waitForLibs(timeoutMs=8000){
+    const t0 = performance.now();
+    while (performance.now() - t0 < timeoutMs){
+      if (window.Hls && window.mpegts) return true;
+      await wait(40);
+    }
+    return false;
+  }
+
+  /******************************************************************
+   * ToastManager
+   ******************************************************************/
+  class ToastManager{
+    constructor(container){
+      this.el = container;
+      this._lastAt = 0;
+    }
+
+    show(message, type='ok', ttl=2600){
+      try{
+        const now = Date.now();
+        // small anti-spam: if too many toasts quickly, extend TTL but keep readable
+        const spacing = now - this._lastAt;
+        this._lastAt = now;
+        const finalTtl = spacing < 350 ? Math.min(4200, ttl + 900) : ttl;
+
+        const t = document.createElement('div');
+        t.className = `toast ${type}`;
+        t.textContent = message;
+        this.el.appendChild(t);
+
+        // animate in
+        requestAnimationFrame(() => t.classList.add('show'));
+
+        setTimeout(() => {
+          t.classList.remove('show');
+          setTimeout(() => t.remove(), 240);
+        }, finalTtl);
+      }catch(err){
+        console.warn('Toast error', err);
+      }
+    }
+  }
+
+  /******************************************************************
+   * StorageManager
+   ******************************************************************/
+  class StorageManager{
+    constructor(prefix='iptv_v2'){
+      this.prefix = prefix;
+    }
+    _k(k){ return `${this.prefix}:${k}`; }
+
+    getStr(k, fallback=''){
+      try{
+        const v = localStorage.getItem(this._k(k));
+        return v ?? fallback;
+      }catch{ return fallback; }
+    }
+    setStr(k, v){
+      try{ localStorage.setItem(this._k(k), String(v)); }catch{}
+    }
+    getJSON(k, fallback){
+      try{
+        const raw = localStorage.getItem(this._k(k));
+        if (!raw) return fallback;
+        return JSON.parse(raw);
+      }catch{ return fallback; }
+    }
+    setJSON(k, v){
+      try{ localStorage.setItem(this._k(k), JSON.stringify(v)); }catch{}
+    }
+
+    getLastChannelId(){ return this.getStr('lastChannelId',''); }
+    setLastChannelId(id){ this.setStr('lastChannelId', id || ''); }
+
+    getVolume(){ return clamp(Number(this.getStr('volume','0.7')), 0, 1); }
+    setVolume(v){ this.setStr('volume', String(clamp(Number(v),0,1))); }
+
+    getMuted(){ return this.getStr('muted','0') === '1'; }
+    setMuted(m){ this.setStr('muted', m ? '1' : '0'); }
+
+    getFavorites(){ return new Set(this.getJSON('favorites', [])); }
+    setFavorites(set){ this.setJSON('favorites', Array.from(set)); }
+
+    getRecent(){ return this.getJSON('recent', []); }
+    setRecent(arr){ this.setJSON('recent', arr); }
+    pushRecent(channelId, limit=40){
+      if (!channelId) return;
+      const arr = this.getRecent().filter(x => x !== channelId);
+      arr.unshift(channelId);
+      this.setRecent(arr.slice(0, limit));
+    }
+
+    // Quality preference:
+    // { mode: 'auto' | 'height', height?: number }
+    getQualityPref(){
+      const q = this.getJSON('qualityPref', { mode:'auto' });
+      if (!q || typeof q !== 'object') return { mode:'auto' };
+      if (q.mode === 'height' && Number.isFinite(q.height)) return { mode:'height', height: Number(q.height) };
+      return { mode:'auto' };
+    }
+    setQualityPref(pref){
+      const v = (pref?.mode === 'height' && Number.isFinite(pref.height))
+        ? { mode:'height', height: Number(pref.height) }
+        : { mode:'auto' };
+      this.setJSON('qualityPref', v);
+    }
+  }
+
+  /******************************************************************
+   * ChannelManager
+   ******************************************************************/
+  class ChannelManager{
+    constructor(){
+      this.channels = [];
+      this.byId = new Map();
+      this._lastM3UTextHash = '';
+    }
+
+    async load(){
+      const res = await fetch(API.m3uDefault, { cache:'no-store' });
+      if (!res.ok) throw new Error(`Failed to load M3U: ${res.status}`);
+      const text = await res.text();
+
+      this.channels = this.parseM3U(text);
+      this.byId.clear();
+      for (const ch of this.channels) this.byId.set(ch.id, ch);
+
+      return this.channels;
+    }
+
+    parseM3U(text){
+      const lines = String(text||'').replace(/\r/g,'').split('\n').map(l => l.trim()).filter(Boolean);
+      const out = [];
+      let pending = null;
+
+      for (let i=0; i<lines.length; i++){
+        const line = lines[i];
+
+        if (line.startsWith('#EXTINF')){
+          pending = this._parseExtInf(line);
+          continue;
+        }
+        if (line.startsWith('#')) continue;
+
+        if (pending){
+          const url = line;
+          const name = pending.name || pending.attrs['tvg-name'] || 'Channel';
+          const logo = pending.attrs['tvg-logo'] || '';
+          const group = pending.attrs['group-title'] || 'Other';
+          const id = this._makeId(name, url, group);
+
+          const searchKey = normalizeSearch(`${name} ${group} ${pending.attrs['tvg-name']||''}`);
+
+          out.push({
+            id, name, url, logo, group,
+            tvgName: pending.attrs['tvg-name'] || '',
+            rawAttrs: pending.attrs,
+            searchKey
+          });
+          pending = null;
+        }
+      }
+
+      // Default sort: group then A→Z
+      out.sort((a,b)=>{
+        const g = a.group.localeCompare(b.group, 'ar');
+        if (g !== 0) return g;
+        return a.name.localeCompare(b.name, 'ar');
+      });
+
+      return out;
+    }
+
+    _parseExtInf(extinfLine){
+      const idxComma = extinfLine.indexOf(',');
+      const left = idxComma >= 0 ? extinfLine.slice(0, idxComma) : extinfLine;
+      const name = idxComma >= 0 ? extinfLine.slice(idxComma+1).trim() : '';
+
+      const attrs = {};
+      const re = /([\w-]+)="([^"]*)"/g;
+      let m;
+      while ((m = re.exec(left)) !== null) attrs[m[1]] = m[2];
+
+      return { name, attrs };
+    }
+
+    _makeId(name, url, group){
+      // stable deterministic id (FNV-1a)
+      const base = `${group}::${name}::${url}`;
+      let h = 2166136261;
+      for (let i=0; i<base.length; i++){
+        h ^= base.charCodeAt(i);
+        h = Math.imul(h, 16777619);
+      }
+      return `ch_${(h>>>0).toString(16)}`;
+    }
+
+    getById(id){ return this.byId.get(id) || null; }
+
+    getIndexById(id){
+      for (let i=0; i<this.channels.length; i++){
+        if (this.channels[i].id === id) return i;
+      }
+      return -1;
+    }
+  }
+
+  /******************************************************************
+   * UIManager
+   * - List rendering with reuse (no per-item listeners, event delegation)
+   * - Smooth overlays
+   * - Freeze frame capture/hide
+   ******************************************************************/
+  class UIManager{
+    constructor({ toast }){
+      this.toast = toast;
+
+      // Header
+      this.searchInput = $('#searchInput');
+      this.tabAll = $('#tabAll');
+      this.tabFav = $('#tabFav');
+      this.tabRecent = $('#tabRecent');
+
+      this.netDot = $('#netDot');
+      this.netText = $('#netText');
+      this.bwText = $('#bwText');
+      this.rttText = $('#rttText');
+      this.qText = $('#qText');
+
+      // Sidebar
+      this.btnReload = $('#btnReload');
+      this.sortSel = $('#sortSel');
+      this.listEl = $('#list');
+      this.chCount = $('#chCount');
+      this.visCount = $('#visCount');
+
+      // Player
+      this.playerWrap = $('#playerWrap');
+      this.video = $('#video');
+
+      this.freezeCanvas = $('#freezeCanvas');
+      this._freezeCtx = this.freezeCanvas.getContext('2d', { alpha:false, desynchronized:true });
+
+      this.overlay = $('#overlay');
+      this.ovTitle = $('#ovTitle');
+      this.ovMsg = $('#ovMsg');
+
+      this.controls = $('#controls');
+      this.btnPlay = $('#btnPlay');
+      this.icoPlay = $('#icoPlay');
+      this.icoPause = $('#icoPause');
+
+      this.btnMute = $('#btnMute');
+      this.icoVolOn = $('#icoVolOn');
+      this.icoVolOff = $('#icoVolOff');
+
+      this.volRange = $('#volRange');
+      this.volVal = $('#volVal');
+
+      this.btnQuality = $('#btnQuality');
+      this.qMenu = $('#qMenu');
+
+      this.btnPiP = $('#btnPiP');
+      this.btnFull = $('#btnFull');
+
+      // Overlays/badges
+      this.qualityBadge = $('#qualityBadge');
+      this.typeBadge = $('#typeBadge');
+      this.channelMini = $('#channelMini');
+      this.miniLogo = $('#miniLogo');
+      this.miniName = $('#miniName');
+      this.miniGroup = $('#miniGroup');
+
+      // Bottom info
+      this.infoLogo = $('#infoLogo');
+      this.infoTitle = $('#infoTitle');
+      this.infoSub = $('#infoSub');
+      this.btnFavToggle = $('#btnFavToggle');
+      this.favToggleText = $('#favToggleText');
+
+      // Stats
+      this.stBuffer = $('#stBuffer');
+      this.stBitrate = $('#stBitrate');
+      this.stFps = $('#stFps');
+      this.stDrop = $('#stDrop');
+      this.stRes = $('#stRes');
+      this.stDelay = $('#stDelay');
+      this.stType = $('#stType');
+
+      // State
+      this.currentTab = 'all';
+      this.currentQuery = '';
+      this.sortMode = 'group_az';
+      this.activeChannelId = '';
+
+      // List node cache (reused DOM nodes)
+      this.nodeById = new Map();
+      this._currentListSignature = '';
+
+      // Controls auto-hide (desktop like Smarters)
+      this._autoHideTimer = null;
+      this._lastPointerAt = 0;
+
+      // Fast filtering scheduler
+      this._filterRaf = 0;
+
+      // List keyboard navigation
+      this._visibleIds = [];
+      this._focusIndex = 0;
+    }
+
+    initControlsAutohide(){
+      const onActivity = () => {
+        this._lastPointerAt = performance.now();
+        this.showControls();
+        if (this._autoHideTimer) clearTimeout(this._autoHideTimer);
+        this._autoHideTimer = setTimeout(() => {
+          // do not hide if focused on controls
+          const ae = document.activeElement;
+          const shouldKeep = ae && (this.controls.contains(ae) || this.qMenu.contains(ae));
+          if (!shouldKeep) this.hideControls();
+        }, 2200);
+      };
+
+      // Passive events for performance
+      this.playerWrap.addEventListener('mousemove', onActivity, { passive:true });
+      this.playerWrap.addEventListener('touchstart', onActivity, { passive:true });
+      this.playerWrap.addEventListener('touchmove', onActivity, { passive:true });
+      this.playerWrap.addEventListener('pointermove', onActivity, { passive:true });
+
+      // Always show on focus in
+      this.controls.addEventListener('focusin', () => this.showControls(), { passive:true });
+    }
+
+    showControls(){ this.controls.classList.remove('hide'); }
+    hideControls(){ this.controls.classList.add('hide'); }
+
+    setPlayState(isPlaying){
+      this.icoPlay.style.display = isPlaying ? 'none' : '';
+      this.icoPause.style.display = isPlaying ? '' : 'none';
+    }
+    setMuteState(muted){
+      this.icoVolOn.style.display = muted ? 'none' : '';
+      this.icoVolOff.style.display = muted ? '' : 'none';
+    }
+    setVolumeUI(v){
+      const vv = clamp(Number(v), 0, 1);
+      const p = Math.round(vv * 100);
+      this.volRange.value = String(p);
+      this.volVal.textContent = `${p}%`;
+    }
+
+    setNetworkUI({ online, bwBits, rttMs }){
+      const on = !!online;
+      this.netDot.classList.toggle('online', on);
+      this.netDot.classList.toggle('offline', !on);
+      this.netText.textContent = on ? 'Online' : 'Offline';
+      this.bwText.textContent = bwBits ? fmtMbps(bwBits) : '--';
+      this.rttText.textContent = rttMs ? fmtMs(rttMs) : '--';
+    }
+
+    setQualityText(txt){
+      const t = txt || 'Auto';
+      this.qText.textContent = t;
+      this.qualityBadge.textContent = t;
+    }
+
+    setTypeText(t){
+      const v = t || '—';
+      this.typeBadge.textContent = v;
+      this.stType.textContent = v;
+    }
+
+    showOverlay(title, msg){
+      this.ovTitle.textContent = title || 'جاري التحضير...';
+      this.ovMsg.textContent = msg || '';
+      this.overlay.classList.add('show');
+    }
+    hideOverlay(){
+      this.overlay.classList.remove('show');
+    }
+
+    /** Freeze Frame:
+     *  - Used when we MUST clear/detach MSE (e.g., channel change, hard reconnect)
+     *  - Prevents black screen/flicker without duplicating frames.
+     */
+    captureFreezeFrame(){
+      try{
+        const v = this.video;
+        if (!v || v.readyState < 2 || v.videoWidth <= 0 || v.videoHeight <= 0) return false;
+
+        // Ensure canvas matches video frame size (not CSS size)
+        if (this.freezeCanvas.width !== v.videoWidth) this.freezeCanvas.width = v.videoWidth;
+        if (this.freezeCanvas.height !== v.videoHeight) this.freezeCanvas.height = v.videoHeight;
+
+        this._freezeCtx.drawImage(v, 0, 0, this.freezeCanvas.width, this.freezeCanvas.height);
+        return true;
+      }catch{
+        return false;
+      }
+    }
+    showFreeze(){
+      this.freezeCanvas.classList.add('show');
+    }
+    hideFreeze(){
+      this.freezeCanvas.classList.remove('show');
+      // Do not clear canvas aggressively (keeps last still if quickly toggled)
+    }
+
+    renderLogoHTML(logoUrl, name, size=44){
+      const safeName = String(name || '').trim() || 'C';
+      const letter = safeName[0]?.toUpperCase() || 'C';
+
+      if (logoUrl){
+        // Logo URLs often already public. If broken -> graceful fallback
+        return `<img src="${escapeHtml(logoUrl)}" alt="${escapeHtml(safeName)}" loading="lazy" decoding="async"
+          onerror="this.remove(); this.parentElement.innerHTML='<div class=\\'ph\\'>${escapeHtml(letter)}</div>';">`;
+      }
+      return `<div class="ph">${escapeHtml(letter)}</div>`;
+    }
+
+    setChannelInfo(ch, isFav){
+      if (!ch){
+        this.infoLogo.innerHTML = '';
+        this.infoTitle.textContent = '—';
+        this.infoSub.textContent = '—';
+        this.favToggleText.textContent = 'إضافة للمفضلة';
+        this.channelMini.style.display = 'none';
+        return;
+      }
+
+      this.infoLogo.innerHTML = this.renderLogoHTML(ch.logo, ch.name, 46);
+      this.infoTitle.textContent = ch.name || '—';
+      this.infoSub.textContent = ch.group ? `المجموعة: ${ch.group}` : '—';
+      this.favToggleText.textContent = isFav ? 'إزالة من المفضلة' : 'إضافة للمفضلة';
+
+      // top mini (Smarters-like)
+      this.channelMini.style.display = '';
+      this.miniLogo.innerHTML = this.renderLogoHTML(ch.logo, ch.name, 34);
+      this.miniName.textContent = ch.name || '—';
+      this.miniGroup.textContent = ch.group || '—';
+    }
+
+    setActiveInList(id){
+      this.activeChannelId = id || '';
+      // Update only previous + current to avoid full list re-render
+      const prev = this.listEl.querySelector('.item.active');
+      if (prev) prev.classList.remove('active');
+
+      const el = this.listEl.querySelector(`.item[data-id="${CSS.escape(this.activeChannelId)}"]`);
+      if (el){
+        el.classList.add('active');
+        el.scrollIntoView({ block:'nearest' });
+      }
+    }
+
+    updateStats({ bufferText, bitrateText, fpsText, droppedText, resText, delayText, typeText }){
+      if (bufferText != null) this.stBuffer.textContent = bufferText;
+      if (bitrateText != null) this.stBitrate.textContent = bitrateText;
+      if (fpsText != null) this.stFps.textContent = fpsText;
+      if (droppedText != null) this.stDrop.textContent = droppedText;
+      if (resText != null) this.stRes.textContent = resText;
+      if (delayText != null) this.stDelay.textContent = delayText;
+      if (typeText != null) this.stType.textContent = typeText;
+    }
+
+    // Quality menu
+    buildQualityMenu({ levels, currentText, activeMode }){
+      // activeMode: { mode:'auto' } or { mode:'height', height }
+      try{
+        this.qMenu.innerHTML = '';
+        const frag = document.createDocumentFragment();
+
+        // Auto
+        frag.appendChild(this._qualityItem({
+          key: 'auto',
+          text: 'Auto',
+          tag: 'ABR',
+          active: activeMode?.mode !== 'height'
+        }));
+
+        // Sort levels by height desc (4K -> 360p)
+        const sorted = [...levels].sort((a,b) => (b.height||0) - (a.height||0));
+        for (const lv of sorted){
+          const h = lv.height || 0;
+          const label = h ? `${h}p` : `Level ${lv.levelIndex}`;
+          const tag = lv.bitrate ? fmtKbps(lv.bitrate) : '';
+          frag.appendChild(this._qualityItem({
+            key: `h_${h || lv.levelIndex}`,
+            levelIndex: lv.levelIndex,
+            height: h,
+            text: label,
+            tag,
+            active: activeMode?.mode === 'height' && Number(activeMode.height) === Number(h)
+          }));
+        }
+
+        this.qMenu.appendChild(frag);
+      }catch(err){
+        console.warn('Quality menu error', err);
+      }
+    }
+
+    _qualityItem({ key, text, tag, active, levelIndex, height }){
+      const el = document.createElement('div');
+      el.className = `mi${active ? ' active' : ''}`;
+      el.setAttribute('role', 'menuitem');
+      el.dataset.qkey = String(key);
+      if (Number.isFinite(levelIndex)) el.dataset.level = String(levelIndex);
+      if (Number.isFinite(height)) el.dataset.height = String(height);
+      el.innerHTML = `<span>${escapeHtml(text)}</span><span class="tag">${escapeHtml(tag || '')}</span>`;
+      return el;
+    }
+
+    showQualityMenu(){ this.qMenu.classList.add('show'); }
+    hideQualityMenu(){ this.qMenu.classList.remove('show'); }
+    toggleQualityMenu(){
+      this.qMenu.classList.toggle('show');
+    }
+
+    // Sidebar list rendering with reuse:
+    // We rebuild group wrappers + reorder nodes, but we reuse existing channel nodes (no duplicated listeners).
+    ensureChannelNodes(channels, favoritesSet){
+      for (const ch of channels){
+        if (this.nodeById.has(ch.id)) continue;
+
+        const item = document.createElement('div');
+        item.className = 'item';
+        item.tabIndex = 0;
+        item.dataset.id = ch.id;
+        item.dataset.group = ch.group || '';
+        item.dataset.key = ch.searchKey || normalizeSearch(`${ch.name} ${ch.group}`);
+
+        item.innerHTML = `
+          <div class="logo">${this.renderLogoHTML(ch.logo, ch.name, 44)}</div>
+          <div class="meta">
+            <div class="n">${escapeHtml(ch.name || '')}</div>
+            <div class="g">${escapeHtml(ch.group || '')}</div>
+          </div>
+          <div class="actions">
+            <button class="fav ${favoritesSet.has(ch.id) ? 'on' : ''}" type="button" data-fav="1" title="Favorite">
+              <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                <path d="M12 17.3 6.8 20l1-5.7L3.6 10.6l5.8-.8L12 4.5l2.6 5.3 5.8.8-4.2 3.7 1 5.7L12 17.3Z"
+                  fill="${favoritesSet.has(ch.id) ? 'rgba(255,202,58,.85)' : 'rgba(255,255,255,.14)'}"
+                  stroke="rgba(255,255,255,.78)" stroke-width="1.1" stroke-linejoin="round"/>
+              </svg>
+            </button>
+          </div>
+        `;
+
+        this.nodeById.set(ch.id, item);
+      }
+    }
+
+    updateFavoriteVisual(id, on){
+      const node = this.nodeById.get(id);
+      if (!node) return;
+      const btn = node.querySelector('.fav');
+      if (!btn) return;
+      btn.classList.toggle('on', !!on);
+      // Update star fill (small)
+      const path = btn.querySelector('path');
+      if (path){
+        path.setAttribute('fill', on ? 'rgba(255,202,58,.85)' : 'rgba(255,255,255,.14)');
+      }
+    }
+
+    // Build grouped DOM view using reused item nodes
+    renderChannelListView({ channels, favoritesSet, recentIds, tab, query, sortMode, activeId }){
+      const q = normalizeSearch(query || '');
+      const isFavTab = tab === 'fav';
+      const isRecentTab = tab === 'recent';
+
+      // Determine list of channels by tab
+      let list = channels;
+
+      if (isFavTab){
+        list = list.filter(ch => favoritesSet.has(ch.id));
+      } else if (isRecentTab){
+        // Keep recent order
+        const map = new Map(list.map(ch => [ch.id, ch]));
+        list = (recentIds || []).map(id => map.get(id)).filter(Boolean);
+      }
+
+      // Sorting
+      if (!isRecentTab){
+        if (sortMode === 'az'){
+          list = [...list].sort((a,b)=> a.name.localeCompare(b.name,'ar'));
+        }else if (sortMode === 'za'){
+          list = [...list].sort((a,b)=> b.name.localeCompare(a.name,'ar'));
+        }else{
+          // group_az default
+          list = [...list].sort((a,b)=>{
+            const g = (a.group||'').localeCompare((b.group||''),'ar');
+            if (g !== 0) return g;
+            return (a.name||'').localeCompare((b.name||''),'ar');
+          });
+        }
+      }
+
+      // Filter query (fast)
+      if (q){
+        list = list.filter(ch => (ch.searchKey || '').includes(q));
+      }
+
+      // Update counters
+      this.visCount.textContent = String(list.length);
+
+      // Build view: group wrappers unless recent tab (Smarters-like recent list)
+      const frag = document.createDocumentFragment();
+      this._visibleIds = [];
+
+      if (isRecentTab){
+        const g = document.createElement('div');
+        g.className = 'group';
+        const h = document.createElement('div');
+        h.className = 'group-h';
+        h.innerHTML = `<div class="name">Recent</div><div class="count">${list.length}</div>`;
+        g.appendChild(h);
+
+        for (const ch of list){
+          const node = this.nodeById.get(ch.id);
+          if (!node) continue;
+          node.classList.toggle('active', ch.id === activeId);
+          g.appendChild(node);
+          this._visibleIds.push(ch.id);
+        }
+        frag.appendChild(g);
+      }else{
+        let currentGroup = null;
+        let groupEl = null;
+        let groupCount = 0;
+
+        const flushGroup = () => {
+          if (!groupEl) return;
+          // update count
+          const c = groupEl.querySelector('.group-h .count');
+          if (c) c.textContent = String(groupCount);
+          if (groupCount > 0) frag.appendChild(groupEl);
+          groupEl = null;
+          groupCount = 0;
+        };
+
+        for (const ch of list){
+          const grp = ch.group || 'Other';
+          if (grp !== currentGroup){
+            flushGroup();
+            currentGroup = grp;
+
+            groupEl = document.createElement('div');
+            groupEl.className = 'group';
+            const head = document.createElement('div');
+            head.className = 'group-h';
+            head.innerHTML = `<div class="name">${escapeHtml(grp)}</div><div class="count">0</div>`;
+            groupEl.appendChild(head);
+          }
+
+          const node = this.nodeById.get(ch.id);
+          if (!node) continue;
+          node.classList.toggle('active', ch.id === activeId);
+          groupEl.appendChild(node);
+          groupCount++;
+          this._visibleIds.push(ch.id);
+        }
+
+        flushGroup();
+      }
+
+      // Replace list children (reusing nodes)
+      this.listEl.replaceChildren(frag);
+
+      // Ensure active is in view
+      if (activeId){
+        const activeNode = this.listEl.querySelector(`.item[data-id="${CSS.escape(activeId)}"]`);
+        if (activeNode) activeNode.scrollIntoView({ block:'nearest' });
+      }
+
+      // Reset focus index to active (TV/remote friendly)
+      if (activeId){
+        const idx = this._visibleIds.indexOf(activeId);
+        this._focusIndex = idx >= 0 ? idx : 0;
+      }else{
+        this._focusIndex = 0;
+      }
+    }
+
+    focusNext(){
+      if (!this._visibleIds.length) return null;
+      this._focusIndex = clamp(this._focusIndex + 1, 0, this._visibleIds.length - 1);
+      const id = this._visibleIds[this._focusIndex];
+      this._focusId(id);
+      return id;
+    }
+    focusPrev(){
+      if (!this._visibleIds.length) return null;
+      this._focusIndex = clamp(this._focusIndex - 1, 0, this._visibleIds.length - 1);
+      const id = this._visibleIds[this._focusIndex];
+      this._focusId(id);
+      return id;
+    }
+    _focusId(id){
+      const node = this.listEl.querySelector(`.item[data-id="${CSS.escape(id)}"]`);
+      if (node){
+        node.focus({ preventScroll:true });
+        node.scrollIntoView({ block:'nearest' });
+      }
+    }
+
+    getVisibleIds(){ return this._visibleIds.slice(); }
+  }
+
+  /******************************************************************
+   * NetworkMonitor
+   ******************************************************************/
+  class NetworkMonitor{
+    constructor({ ui, toast, player }){
+      this.ui = ui;
+      this.toast = toast;
+      this.player = player;
+
+      this._timer = null;
+      this._lastOnline = navigator.onLine;
+
+      this._onOnline = () => {
+        if (!this._lastOnline){
+          this.toast.show('عاد الإنترنت. سيتم استئناف البث تلقائياً.', 'ok', 2400);
+        }
+        this._lastOnline = true;
+        this.player.onInternetRestored();
+      };
+      this._onOffline = () => {
+        if (this._lastOnline){
+          this.toast.show('انقطع الإنترنت. سيتم إعادة الاتصال عند العودة.', 'warn', 3200);
+        }
+        this._lastOnline = false;
+      };
+    }
+
+    start(){
+      window.addEventListener('online', this._onOnline);
+      window.addEventListener('offline', this._onOffline);
+      this._timer = setInterval(() => this.tick(), 1000);
+      this.tick();
+    }
+
+    stop(){
+      window.removeEventListener('online', this._onOnline);
+      window.removeEventListener('offline', this._onOffline);
+      if (this._timer) clearInterval(this._timer);
+      this._timer = null;
+    }
+
+    tick(){
+      try{
+        const conn = navigator.connection || navigator.mozConnection || navigator.webkitConnection;
+        const downlinkMbps = conn && Number.isFinite(conn.downlink) ? conn.downlink : 0;
+        const rtt = conn && Number.isFinite(conn.rtt) ? conn.rtt : 0;
+
+        // Prefer player measured bandwidth estimate if available
+        const playerBwBits = this.player.getBandwidthEstimateBits();
+        const navBwBits = downlinkMbps > 0 ? downlinkMbps * 1e6 : 0;
+        const bwBits = playerBwBits || navBwBits;
+
+        this.ui.setNetworkUI({ online: navigator.onLine, bwBits, rttMs: rtt || 0 });
+      }catch(err){
+        console.warn('Network tick error', err);
+      }
+    }
+  }
+
+  /******************************************************************
+   * PlayerManager
+   * - Single video element reused
+   * - HLS with proxy-loader to proxy all internal requests
+   * - Smart reconnect ladder (no destroy early)
+   * - Prevent black/flicker: freeze frame only when needed (detach/destroy)
+   ******************************************************************/
+  class PlayerManager{
+    constructor({ video, ui, toast, storage }){
+      this.video = video;
+      this.ui = ui;
+      this.toast = toast;
+      this.storage = storage;
+
+      this.hls = null;
+      this.ts = null;
+      this.playerType = '—'; // HLS / HLS Native / MPEGTS
+      this.currentChannel = null;
+
+      // Quality state
+      this.levels = [];
+      this._lastQualityText = 'Auto';
+      this._qualityPref = this.storage.getQualityPref();
+
+      // Playback/frames stats
+      this._statsTimer = null;
+      this._bandwidthBits = 0;
+
+      // FPS tracker
+      this._fps = 0;
+      this._fpsFrames = 0;
+      this._fpsLastTs = 0;
+      this._rvfc = null; // requestVideoFrameCallback handler
+
+      // Stall/reconnect monitor
+      this._reconnect = new ConnectionMonitor({ player: this, ui, toast });
+
+      // Video events (kept stable)
+      this._bindVideoEvents();
+
+      // Initial UI state
+      this.ui.setPlayState(false);
+      this.ui.setMuteState(this.video.muted);
+
+      // Do not force muted by default; use stored preference
+      this.applyStoredVolume();
+
+      // Auto-hide controls
+      this.ui.initControlsAutohide();
+    }
+
+    applyStoredVolume(){
+      const vol = this.storage.getVolume();
+      const muted = this.storage.getMuted();
+      this.video.volume = vol;
+      this.video.muted = muted;
+      this.ui.setVolumeUI(vol);
+      this.ui.setMuteState(muted);
+    }
+
+    _bindVideoEvents(){
+      // Important: do NOT clear src on minor errors; keep last frame visible.
+      this.video.addEventListener('play', () => this.ui.setPlayState(true), { passive:true });
+      this.video.addEventListener('pause', () => this.ui.setPlayState(false), { passive:true });
+      this.video.addEventListener('volumechange', () => {
+        try{
+          this.storage.setVolume(this.video.volume);
+          this.storage.setMuted(this.video.muted);
+          this.ui.setVolumeUI(this.video.volume);
+          this.ui.setMuteState(this.video.muted);
+        }catch{}
+      }, { passive:true });
+
+      // On playing: hide overlays + hide freeze
+      this.video.addEventListener('playing', () => {
+        this.ui.hideOverlay();
+        this.ui.hideFreeze();
+        this.ui.setPlayState(true);
+        this._reconnect.onPlaying();
+      }, { passive:true });
+
+      // waiting/stalled: let ConnectionMonitor decide ladder; keep frame visible
+      this.video.addEventListener('waiting', () => this._reconnect.onSignal('waiting'), { passive:true });
+      this.video.addEventListener('stalled', () => this._reconnect.onSignal('stalled'), { passive:true });
+      this.video.addEventListener('error', () => this._reconnect.onSignal('video_error'), { passive:true });
+
+      // Track time progress for stall detection
+      this.video.addEventListener('timeupdate', () => this._reconnect.onTimeUpdate(), { passive:true });
+    }
+
+    getBandwidthEstimateBits(){
+      // Prefer Hls estimate
+      if (this.hls && Number.isFinite(this.hls.bandwidthEstimate) && this.hls.bandwidthEstimate > 0){
+        return this.hls.bandwidthEstimate;
+      }
+      // mpegts.js stats
+      if (this.ts && typeof this.ts.getStatisticsInfo === 'function'){
+        try{
+          const s = this.ts.getStatisticsInfo();
+          const speedKBps = Number(s?.speed || 0);
+          if (speedKBps > 0) return speedKBps * 1024 * 8;
+        }catch{}
+      }
+      return this._bandwidthBits || 0;
+    }
+
+    getBufferedSeconds(){
+      try{
+        const v = this.video;
+        if (!v || !v.buffered || v.buffered.length === 0) return 0;
+        const t = v.currentTime || 0;
+        for (let i=0; i<v.buffered.length; i++){
+          const s = v.buffered.start(i);
+          const e = v.buffered.end(i);
+          if (t >= s && t <= e) return Math.max(0, e - t);
+        }
+        const e = v.buffered.end(v.buffered.length - 1);
+        return Math.max(0, e - t);
+      }catch{ return 0; }
+    }
+
+    getLiveDelaySeconds(){
+      // Use seekable end as "live edge" approximation
+      try{
+        const v = this.video;
+        if (!v || !v.seekable || v.seekable.length === 0) return 0;
+        const end = v.seekable.end(v.seekable.length - 1);
+        const ct = v.currentTime || 0;
+        return Math.max(0, end - ct);
+      }catch{ return 0; }
+    }
+
+    getResolutionText(){
+      const w = this.video.videoWidth || 0;
+      const h = this.video.videoHeight || 0;
+      return (w && h) ? `${w}x${h}` : '--';
+    }
+
+    getDroppedFrames(){
+      try{
+        // Chrome/Edge
+        if (typeof this.video.getVideoPlaybackQuality === 'function'){
+          const q = this.video.getVideoPlaybackQuality();
+          const dropped = Number(q?.droppedVideoFrames || 0);
+          const total = Number(q?.totalVideoFrames || 0);
+          return { dropped, total };
+        }
+        // Safari fallback
+        const dropped = Number(this.video.webkitDroppedFrameCount || 0);
+        const total = Number(this.video.webkitDecodedFrameCount || 0);
+        return { dropped, total };
+      }catch{
+        return { dropped: 0, total: 0 };
+      }
+    }
+
+    startStats(){
+      this.stopStats();
+      this._statsTimer = setInterval(() => this._tickStats(), 700);
+      this._tickStats();
+      this._startFpsTracker();
+    }
+
+    stopStats(){
+      if (this._statsTimer) clearInterval(this._statsTimer);
+      this._statsTimer = null;
+      this._stopFpsTracker();
+    }
+
+    _tickStats(){
+      try{
+        const bufSec = this.getBufferedSeconds();
+        const bufPct = clamp((bufSec / 15) * 100, 0, 100);
+        const bufferText = `${bufPct.toFixed(0)}% (${bufSec.toFixed(1)}s)`;
+
+        // Bitrate: show level bitrate (manual) or bandwidth estimate
+        let bitrateBits = 0;
+
+        if (this.hls){
+          const auto = this.hls.autoLevelEnabled;
+          const idx = this.hls.currentLevel;
+          const lv = this.hls.levels?.[idx];
+          // if manual, show exact level bitrate; else show estimate
+          if (!auto && lv?.bitrate) bitrateBits = lv.bitrate;
+          bitrateBits = bitrateBits || this.hls.bandwidthEstimate || 0;
+          if (this.hls.bandwidthEstimate) this._bandwidthBits = this.hls.bandwidthEstimate;
+        } else if (this.ts){
+          bitrateBits = this.getBandwidthEstimateBits();
+        }
+
+        const bitrateText = bitrateBits ? fmtKbps(bitrateBits) : '--';
+        const resText = this.getResolutionText();
+        const delaySec = this.getLiveDelaySeconds();
+        const delayText = delaySec ? `${delaySec.toFixed(1)}s` : '--';
+
+        const { dropped, total } = this.getDroppedFrames();
+        const droppedText = total ? `${dropped}/${total}` : `${dropped}`;
+
+        this.ui.updateStats({
+          bufferText,
+          bitrateText,
+          fpsText: this._fps ? `${this._fps.toFixed(0)}` : '--',
+          droppedText,
+          resText,
+          delayText,
+          typeText: this.playerType
+        });
+      }catch(err){
+        console.warn('Stats tick error', err);
+      }
+    }
+
+    _startFpsTracker(){
+      this._stopFpsTracker();
+      this._fps = 0;
+      this._fpsFrames = 0;
+      this._fpsLastTs = performance.now();
+
+      // Best: requestVideoFrameCallback (Chrome/Edge/Android WebView modern)
+      if (this.video && typeof this.video.requestVideoFrameCallback === 'function'){
+        const loop = (now, meta) => {
+          this._fpsFrames++;
+          const dt = now - this._fpsLastTs;
+          if (dt >= 1000){
+            this._fps = (this._fpsFrames * 1000) / dt;
+            this._fpsFrames = 0;
+            this._fpsLastTs = now;
+          }
+          this._rvfc = this.video.requestVideoFrameCallback(loop);
+        };
+        this._rvfc = this.video.requestVideoFrameCallback(loop);
+        return;
+      }
+
+      // Fallback: approximate with timeupdate (not great) -> leave as '--'
+      this._fps = 0;
+    }
+
+    _stopFpsTracker(){
+      try{
+        if (this._rvfc && typeof this.video.cancelVideoFrameCallback === 'function'){
+          this.video.cancelVideoFrameCallback(this._rvfc);
+        }
+      }catch{}
+      this._rvfc = null;
+    }
+
+    async probeType(url){
+      // Must use /api/stream/probe (do not change)
+      try{
+        const res = await fetch(`${API.probe}?url=${encodeURIComponent(url)}`, { cache:'no-store' });
+        if (res.ok){
+          const data = await res.json().catch(()=>null);
+          const t = String(data?.type || data?.stream_type || data?.format || '').toLowerCase();
+          if (t.includes('hls') || t.includes('m3u8')) return 'hls';
+          if (t.includes('mpegts') || t.includes('ts')) return 'mpegts';
+        }
+      }catch{}
+      // heuristic fallback
+      if (isProbablyHls(url)) return 'hls';
+      if (isProbablyMpegTs(url)) return 'mpegts';
+      return 'hls';
+    }
+
+    _createProxyLoaderClass(basePlaylistUrl){
+      // Proxy every request through /api/stream/proxy while resolving relative URLs
+      const BaseLoader = Hls.DefaultConfig.loader;
+      const base = basePlaylistUrl;
+      return class ProxyLoader extends BaseLoader{
+        constructor(config){ super(config); }
+        load(context, config, callbacks){
+          try{
+            const abs = resolveAgainstBase(context.url, base);
+            context.url = proxyUrl(abs);
+          }catch{}
+          return super.load(context, config, callbacks);
+        }
+      };
+    }
+
+    _bestHlsConfig(basePlaylistUrl){
+      const ProxyLoader = this._createProxyLoaderClass(basePlaylistUrl);
+
+      // Hls.js 1.5 supports loadPolicy objects (progressive/retry fine-tuning)
+      const policy = {
+        default: {
+          maxTimeToFirstByteMs: 9000,
+          timeoutMs: 20000,
+          maxRetry: 8,
+          retryDelayMs: 700,
+          maxRetryDelayMs: 8000
+        }
+      };
+      const fragPolicy = {
+        default: {
+          maxTimeToFirstByteMs: 12000,
+          timeoutMs: 24000,
+          maxRetry: 10,
+          retryDelayMs: 700,
+          maxRetryDelayMs: 10000
+        }
+      };
+
+      return {
+        // Live + low latency
+        lowLatencyMode: true,
+        liveSyncDurationCount: 2,
+        liveMaxLatencyDurationCount: 5,
+        maxLiveSyncPlaybackRate: 1.35,
+
+        // Smart buffer (dynamic-ish)
+        backBufferLength: 30,
+        maxBufferLength: 26,
+        maxMaxBufferLength: 60,
+        maxBufferHole: 0.5,
+        maxBufferSize: 36 * 1000 * 1000,
+
+        // ABR tuning
+        startLevel: -1,
+        capLevelToPlayerSize: true,
+        abrEwmaFastLive: 3,
+        abrEwmaSlowLive: 9,
+        abrEwmaDefaultEstimate: 1_200_000,
+        abrBandWidthFactor: 0.90,
+        abrBandWidthUpFactor: 0.75,
+        abrMaxWithRealBitrate: true,
+
+        // Reliability / recovery
+        enableWorker: true,
+        enableSoftwareAES: true,
+        nudgeOffset: 0.1,
+        nudgeMaxRetry: 8,
+        appendErrorMaxRetry: 6,
+
+        // Reduce UI flicker & keep stable playback
+        // (we avoid re-creating <video>; Hls instance handles MSE)
+        progressive: true, // if supported by version; harmless otherwise
+
+        // Load policies
+        manifestLoadPolicy: policy,
+        playlistLoadPolicy: policy,
+        fragLoadPolicy: fragPolicy,
+
+        // Proxy all requests
+        loader: ProxyLoader,
+
+        // Debug off
+        debug: false
+      };
+    }
+
+    _bindHlsEvents(){
+      if (!this.hls) return;
+
+      // Manifest parsed -> extract quality levels + apply stored preference
+      this.hls.on(Hls.Events.MANIFEST_PARSED, () => {
+        try{
+          const lvls = this.hls.levels || [];
+          this.levels = lvls.map((l, idx) => ({
+            levelIndex: idx,
+            height: Number(l.height || 0),
+            bitrate: Number(l.bitrate || 0)
+          }));
+
+          // Build menu
+          this.ui.buildQualityMenu({
+            levels: this.levels,
+            currentText: this._lastQualityText,
+            activeMode: this._qualityPref
+          });
+
+          // Apply stored quality (height) if possible
+          if (this._qualityPref?.mode === 'height'){
+            const desired = Number(this._qualityPref.height);
+            const matchIdx = this._findLevelIndexByHeight(desired);
+            if (matchIdx >= 0){
+              this._setHlsLevelIndex(matchIdx, { silent:true });
+              this.toast.show(`تم تطبيق الجودة المحفوظة: ${desired}p`, 'ok', 1800);
+            }else{
+              // fallback to auto if not found
+              this._setAutoQuality({ silent:true });
+            }
+          }else{
+            this._setAutoQuality({ silent:true });
+          }
+
+          this._syncQualityText();
+        }catch(err){
+          console.warn('MANIFEST_PARSED error', err);
+        }
+      });
+
+      this.hls.on(Hls.Events.LEVEL_SWITCHED, () => {
+        this._syncQualityText();
+      });
+
+      this.hls.on(Hls.Events.FRAG_LOADED, () => {
+        try{
+          const be = this.hls.bandwidthEstimate || 0;
+          if (be > 0) this._bandwidthBits = be;
+        }catch{}
+      });
+
+      // Smart error -> do NOT destroy early. Feed ConnectionMonitor signals.
+      this.hls.on(Hls.Events.ERROR, (evt, data) => {
+        try{
+          if (!data) return;
+          const t = data.type || '';
+          const d = data.details || '';
+          const fatal = !!data.fatal;
+
+          // Send to ConnectionMonitor (it owns ladder + escalation)
+          this._reconnect.onHlsError({ type:t, details:d, fatal });
+
+          // For fatal media error, attempt immediate recover (first ladder step)
+          if (fatal && t === Hls.ErrorTypes.MEDIA_ERROR){
+            this._reconnect.requestImmediate('recoverMediaError');
+          }
+          if (fatal && t === Hls.ErrorTypes.NETWORK_ERROR){
+            this._reconnect.requestImmediate('startLoad');
+          }
+        }catch(err){
+          console.warn('HLS error handler failed', err);
+        }
+      });
+    }
+
+    _syncQualityText(){
+      if (!this.hls){
+        this.ui.setQualityText('—');
+        this.ui.qualityBadge.textContent = '—';
+        return;
+      }
+      const auto = this.hls.autoLevelEnabled;
+      const idx = this.hls.currentLevel;
+      const lv = this.hls.levels?.[idx];
+      if (auto){
+        const t = lv?.height ? `Auto (${lv.height}p)` : 'Auto';
+        this._lastQualityText = t;
+        this.ui.setQualityText(t);
+        return;
+      }
+      const t = lv?.height ? `${lv.height}p` : `L${idx}`;
+      this._lastQualityText = t;
+      this.ui.setQualityText(t);
+    }
+
+    _findLevelIndexByHeight(height){
+      if (!this.hls || !this.hls.levels) return -1;
+      const h = Number(height);
+      let best = -1;
+      // Exact match
+      for (let i=0; i<this.hls.levels.length; i++){
+        if (Number(this.hls.levels[i]?.height || 0) === h) return i;
+      }
+      // If no exact match, pick nearest lower
+      let nearest = -1;
+      let nearestDiff = Infinity;
+      for (let i=0; i<this.hls.levels.length; i++){
+        const hi = Number(this.hls.levels[i]?.height || 0);
+        if (!hi) continue;
+        if (hi <= h){
+          const diff = h - hi;
+          if (diff < nearestDiff){
+            nearestDiff = diff;
+            nearest = i;
+          }
+        }
+      }
+      return nearest;
+    }
+
+    _setAutoQuality({ silent=false } = {}){
+      if (!this.hls) return;
+      this.hls.currentLevel = -1;
+      this.hls.loadLevel = -1;
+      this.hls.nextLevel = -1;
+      this._qualityPref = { mode:'auto' };
+      this.storage.setQualityPref(this._qualityPref);
+      this._syncQualityText();
+      if (!silent) this.toast.show('تم التبديل إلى Auto Quality', 'ok', 1800);
+      this.ui.buildQualityMenu({ levels: this.levels, activeMode: this._qualityPref });
+    }
+
+    _setHlsLevelIndex(idx, { silent=false } = {}){
+      if (!this.hls) return;
+      const i = Number(idx);
+      if (!Number.isInteger(i) || i < 0 || i >= (this.hls.levels?.length || 0)) return;
+
+      // Switch without reloading page/video element
+      this.hls.currentLevel = i;
+      this.hls.loadLevel = i;
+      this.hls.nextLevel = i;
+
+      const h = Number(this.hls.levels[i]?.height || 0);
+      if (h){
+        this._qualityPref = { mode:'height', height: h };
+        this.storage.setQualityPref(this._qualityPref);
+      }else{
+        this._qualityPref = { mode:'auto' };
+        this.storage.setQualityPref(this._qualityPref);
+      }
+
+      this._syncQualityText();
+      if (!silent) this.toast.show(`تم تغيير الجودة إلى ${h ? h+'p' : 'Manual'}`, 'ok', 1800);
+      this.ui.buildQualityMenu({ levels: this.levels, activeMode: this._qualityPref });
+    }
+
+    async playChannel(channel, { reason='user' } = {}){
+      if (!channel) return;
+
+      // UI: show overlay but KEEP last frame (do not clear video until necessary)
+      this.ui.showOverlay('جاري فتح القناة...', reason === 'resume' ? 'استئناف آخر قناة' : 'تحضير البث المباشر');
+      this.currentChannel = channel;
+
+      // Always apply stored volume before play
+      this.applyStoredVolume();
+
+      // For channel change: capture freeze BEFORE destroying players to avoid flicker
+      // Freeze shown only for channel changes (not normal reconnect).
+      const freezeOk = this.ui.captureFreezeFrame();
+      if (freezeOk) this.ui.showFreeze();
+
+      // Hard stop previous players safely (this WILL clear MSE; freeze prevents black)
+      await this._stopPlayersHard({ keepVideoElement:true });
+
+      // Determine type via probe (must not change endpoint)
+      const type = await this.probeType(channel.url);
+      if (type === 'mpegts'){
+        await this._playMpegTs(channel.url);
+      }else{
+        await this._playHls(channel.url);
+      }
+
+      // Start monitors/stats
+      this._reconnect.reset();
+      this._reconnect.start();
+
+      this.startStats();
+      // Try play
+      await this._safePlay();
+
+      // Overlay will hide on 'playing'
+      // If autoplay blocked, overlay stays with instructions
+    }
+
+    async _safePlay(){
+      try{
+        const p = this.video.play();
+        if (p && typeof p.then === 'function') await p;
+      }catch{
+        // Autoplay may be blocked
+        this.ui.showOverlay('اضغط تشغيل', 'تم منع التشغيل التلقائي. اضغط زر التشغيل.');
+        this.ui.setPlayState(false);
+      }
+    }
+
+    async _playHls(originalUrl){
+      // Prefer Hls.js if supported
+      if (window.Hls && Hls.isSupported()){
+        this.playerType = 'HLS';
+        this.ui.setTypeText('HLS');
+
+        const cfg = this._bestHlsConfig(originalUrl);
+        this.hls = new Hls(cfg);
+        this._bindHlsEvents();
+
+        // Important: Keep source as original; loader proxies internal requests.
+        this.hls.loadSource(originalUrl);
+        this.hls.attachMedia(this.video);
+
+        // Hint UI quality
+        this.ui.setQualityText('Auto');
+        this.ui.buildQualityMenu({ levels: [], activeMode: this._qualityPref });
+
+        return;
+      }
+
+      // Native HLS (Safari): use proxy URL (CORS-safe)
+      if (this.video.canPlayType('application/vnd.apple.mpegurl')){
+        this.playerType = 'HLS Native';
+        this.ui.setTypeText('HLS Native');
+
+        this.video.src = proxyUrl(originalUrl);
+        this.ui.setQualityText('Auto');
+        this.levels = [];
+        this.ui.buildQualityMenu({ levels: [], activeMode: { mode:'auto' } });
+        return;
+      }
+
+      throw new Error('HLS not supported');
+    }
+
+    async _playMpegTs(originalUrl){
+      this.playerType = 'MPEGTS';
+      this.ui.setTypeText('MPEGTS');
+      this.ui.setQualityText('—');
+      this.levels = [];
+      this.ui.buildQualityMenu({ levels: [], activeMode: { mode:'auto' } });
+
+      const url = proxyUrl(originalUrl);
+
+      // mpegts.js low-latency tuning
+      if (window.mpegts && mpegts.getFeatureList?.().mseLivePlayback){
+        const config = {
+          type: 'mpegts',
+          url,
+          isLive: true,
+          cors: true
+        };
+
+        const options = {
+          enableStashBuffer: false,        // lower latency
+          stashInitialSize: 128,
+          lazyLoad: false,
+          autoCleanupSourceBuffer: true,
+          autoCleanupMaxBackwardDuration: 30,
+          autoCleanupMinBackwardDuration: 20,
+          fixAudioTimestampGap: true
+        };
+
+        this.ts = mpegts.createPlayer(config, options);
+        this._bindMpegTsEvents();
+        this.ts.attachMediaElement(this.video);
+        this.ts.load();
+        return;
+      }
+
+      // Fallback: try direct video src via proxy
+      this.video.src = url;
+    }
+
+    _bindMpegTsEvents(){
+      if (!this.ts) return;
+      try{
+        this.ts.on(mpegts.Events.ERROR, (type, detail) => {
+          // Feed reconnect ladder
+          this._reconnect.onSignal('mpegts_error');
+        });
+        this.ts.on(mpegts.Events.LOADING_COMPLETE, () => {
+          // might happen if stream ended unexpectedly; attempt reconnect
+          this._reconnect.onSignal('loading_complete');
+        });
+      }catch(err){
+        console.warn('mpegts events bind error', err);
+      }
+    }
+
+    // HARD stop when switching channels / last ladder steps
+    async _stopPlayersHard({ keepVideoElement=true } = {}){
+      // stop reconnect/stats
+      this._reconnect.stop();
+      this.stopStats();
+
+      // HLS
+      if (this.hls){
+        try{ this.hls.stopLoad(); }catch{}
+        try{ this.hls.detachMedia(); }catch{}
+        try{ this.hls.destroy(); }catch{}
+        this.hls = null;
+      }
+
+      // MPEGTS
+      if (this.ts){
+        try{ this.ts.pause(); }catch{}
+        try{ this.ts.unload(); }catch{}
+        try{ this.ts.detachMediaElement(); }catch{}
+        try{ this.ts.destroy(); }catch{}
+        this.ts = null;
+      }
+
+      // Clear src ONLY on channel change/hard reset.
+      // This can clear the last frame; freeze canvas should be shown when we do this.
+      if (keepVideoElement){
+        try{
+          this.video.pause();
+          this.video.removeAttribute('src');
+          this.video.load();
+        }catch{}
+      }
+    }
+
+    togglePlay(){
+      try{
+        if (this.video.paused) this._safePlay();
+        else this.video.pause();
+      }catch{}
+    }
+
+    toggleMute(){
+      try{
+        this.video.muted = !this.video.muted;
+        this.storage.setMuted(this.video.muted);
+        this.ui.setMuteState(this.video.muted);
+      }catch{}
+    }
+
+    setVolume(v){
+      try{
+        this.video.volume = clamp(Number(v), 0, 1);
+      }catch{}
+    }
+
+    bumpVolume(delta){
+      try{
+        const v = clamp((this.video.volume || 0) + delta, 0, 1);
+        this.video.volume = v;
+        this.ui.setVolumeUI(v);
+        this.toast.show(`الصوت: ${Math.round(v*100)}%`, 'ok', 1200);
+      }catch{}
+    }
+
+    async toggleFullscreen(container){
+      try{
+        const el = container || document.documentElement;
+        if (!document.fullscreenElement){
+          await el.requestFullscreen?.();
+        }else{
+          await document.exitFullscreen?.();
+        }
+      }catch{}
+    }
+
+    async togglePiP(){
+      try{
+        if (!document.pictureInPictureElement){
+          if (document.pictureInPictureEnabled && this.video.requestPictureInPicture){
+            await this.video.requestPictureInPicture();
+          }else{
+            this.toast.show('PiP غير مدعوم على هذا المتصفح.', 'warn', 2200);
+          }
+        }else{
+          await document.exitPictureInPicture?.();
+        }
+      }catch{
+        this.toast.show('تعذر تفعيل PiP.', 'warn', 2000);
+      }
+    }
+
+    // Quality actions from UI
+    onQualitySelect({ mode, height, levelIndex }){
+      try{
+        if (!this.hls){
+          this.toast.show('الجودات المتعددة متاحة فقط لقنوات HLS.', 'warn', 1600);
+          return;
+        }
+        if (mode === 'auto'){
+          this._setAutoQuality();
+          return;
+        }
+        if (mode === 'height' && Number.isFinite(height)){
+          // map height -> levelIndex (prefer exact height)
+          const idx = this._findLevelIndexByHeight(Number(height));
+          if (idx >= 0) this._setHlsLevelIndex(idx);
+          else this.toast.show('هذه الجودة غير متاحة لهذه القناة.', 'warn', 1800);
+          return;
+        }
+        if (Number.isFinite(levelIndex)){
+          this._setHlsLevelIndex(Number(levelIndex));
+        }
+      }catch(err){
+        console.warn('Quality select error', err);
+      }
+    }
+
+    // Called by NetworkMonitor when internet is restored (no page reload)
+    async onInternetRestored(){
+      try{
+        if (!this.currentChannel) return;
+
+        // If paused by user, do not auto-start aggressively.
+        // If paused due to buffering, safePlay helps.
+        if (this.video.paused){
+          await this._safePlay();
+          return;
+        }
+
+        // If buffer is empty, trigger ladder step without destroy
+        const buf = this.getBufferedSeconds();
+        if (buf < 0.2){
+          this._reconnect.requestImmediate('startLoad');
+        }
+      }catch{}
+    }
+
+    /******************************************************************
+     * Smart Reconnect Ladder API (used by ConnectionMonitor)
+     * These steps are designed to NOT cause flicker and NOT duplicate frames.
+     ******************************************************************/
+    async stepRecoverMediaError(){
+      if (!this.hls) return false;
+      try{
+        // Keep last frame; do not detach
+        this.hls.recoverMediaError();
+        return true;
+      }catch{ return false; }
+    }
+
+    async stepStartLoad(){
+      if (this.hls){
+        try{
+          this.hls.startLoad(-1);
+          return true;
+        }catch{ return false; }
+      }
+      if (this.ts){
+        try{
+          // mpegts: unload+load (soft)
+          this.ts.unload();
+          this.ts.load();
+          return true;
+        }catch{ return false; }
+      }
+      return false;
+    }
+
+    async stepReloadPlaylist(){
+      if (!this.hls) return false;
+      try{
+        // This triggers fresh playlist fetch without reattaching video
+        this.hls.stopLoad();
+        this.hls.startLoad(-1);
+        return true;
+      }catch{ return false; }
+    }
+
+    async stepReloadFragment(){
+      // There is no direct "reload fragment" API; best practical approach:
+      // Jump close to live edge to force fetching new fragments.
+      try{
+        const v = this.video;
+        if (this.hls){
+          // Try Hls liveSyncPosition first
+          const p = this.hls.liveSyncPosition;
+          if (Number.isFinite(p) && p > 0){
+            v.currentTime = p;
+            return true;
+          }
+        }
+        // Fallback: seekable end - small epsilon
+        if (v.seekable && v.seekable.length > 0){
+          const end = v.seekable.end(v.seekable.length - 1);
+          v.currentTime = Math.max(0, end - 0.2);
+          return true;
+        }
+        return false;
+      }catch{ return false; }
+    }
+
+    async stepReconnectSoft(){
+      // Soft reconnect:
+      // - For HLS: detach/attach media (may clear frame) => use freeze+overlay to prevent black/flicker
+      // - For MPEGTS: detach/attach implies rebuild
+      try{
+        this.ui.showOverlay('إعادة الاتصال...', 'Reconnect (بدون تدمير كامل)');
+        const freezeOk = this.ui.captureFreezeFrame();
+        if (freezeOk) this.ui.showFreeze();
+
+        if (this.hls){
+          try{
+            this.hls.stopLoad();
+            this.hls.detachMedia();
+            this.hls.attachMedia(this.video);
+            this.hls.startLoad(-1);
+            return true;
+          }catch{
+            return false;
+          }
+        }
+
+        if (this.ts){
+          try{
+            // mpegts soft reconnect: unload/load
+            this.ts.unload();
+            this.ts.load();
+            return true;
+          }catch{
+            return false;
+          }
+        }
+
+        return false;
+      }finally{
+        // Keep overlay until 'playing'
+      }
+    }
+
+    async stepDestroyPlayer(){
+      // Destroy player instances (NOT video element) and recreate for same channel URL
+      // Freeze frame avoids black screen
+      try{
+        if (!this.currentChannel) return false;
+
+        this.ui.showOverlay('إصلاح متقدم...', 'Destroy + Recreate Player');
+        const freezeOk = this.ui.captureFreezeFrame();
+        if (freezeOk) this.ui.showFreeze();
+
+        // Do NOT clear video element completely unless needed; but recreating pipeline requires it.
+        await this._stopPlayersHard({ keepVideoElement:true });
+
+        const type = await this.probeType(this.currentChannel.url);
+        if (type === 'mpegts') await this._playMpegTs(this.currentChannel.url);
+        else await this._playHls(this.currentChannel.url);
+
+        await this._safePlay();
+        return true;
+      }catch{
+        return false;
+      }
+    }
+
+    async stepReloadChannel(){
+      if (!this.currentChannel) return false;
+      try{
+        this.toast.show('إعادة تحميل القناة...', 'warn', 2000);
+        await this.playChannel(this.currentChannel, { reason:'recovery' });
+        return true;
+      }catch{
+        return false;
+      }
+    }
+
+    destroyAll(){
+      // Call on page unload if needed
+      try{ this._reconnect.stop(); }catch{}
+      try{ this.stopStats(); }catch{}
+      this._stopPlayersHard({ keepVideoElement:true });
+    }
+  }
+
+  /******************************************************************
+   * ConnectionMonitor (Smarters-like Smart Reconnect Ladder)
+   *
+   * Goal:
+   *  - Detect stalls/waiting/network errors without destroying early.
+   *  - Keep last frame visible (no black, no flicker).
+   *  - Escalate:
+   *     RecoverMediaError
+   *     -> StartLoad()
+   *     -> Reload Playlist
+   *     -> Reload Fragment (jump to live edge)
+   *     -> Reconnect (detach/attach)
+   *     -> Destroy Player (recreate instance)
+   *     -> Reload Channel
+   ******************************************************************/
+  class ConnectionMonitor{
+    constructor({ player, ui, toast }){
+      this.player = player;
+      this.ui = ui;
+      this.toast = toast;
+
+      this._timer = null;
+
+      // Playback progress tracking
+      this._lastTime = 0;
+      this._lastProgressAt = 0;
+
+      // Reconnect state
+      this._busy = false;
+      this._stage = 0;
+      this._signals = new Set();
+
+      // Immediate request queue (e.g., fatal error)
+      this._immediate = null;
+
+      // Backoff
+      this._lastActionAt = 0;
+    }
+
+    start(){
+      this.stop();
+      this.reset();
+      this._timer = setInterval(() => this._tick(), 1000);
+    }
+
+    stop(){
+      if (this._timer) clearInterval(this._timer);
+      this._timer = null;
+    }
+
+    reset(){
+      this._busy = false;
+      this._stage = 0;
+      this._signals.clear();
+      this._lastTime = this.player.video.currentTime || 0;
+      const now = performance.now();
+      this._lastProgressAt = now;
+      this._lastActionAt = 0;
+      this._immediate = null;
+    }
+
+    onPlaying(){
+      // When playback resumes, clear recovery state
+      this.reset();
+    }
+
+    onTimeUpdate(){
+      const v = this.player.video;
+      const t = v.currentTime || 0;
+      if (t > this._lastTime + 0.03){
+        this._lastTime = t;
+        this._lastProgressAt = performance.now();
+        // If we're reconnecting, let it settle
+      }
+    }
+
+    onSignal(name){
+      // waiting/stalled/errors -> mark signal
+      this._signals.add(String(name));
+    }
+
+    onHlsError({ type, details, fatal }){
+      // Mark signals but do not immediately destroy
+      const k = `hls:${type}:${details}:${fatal ? 'fatal' : 'nf'}`;
+      this._signals.add(k);
+
+      // Common important details
+      const d = String(details||'');
+      if (d.includes('FRAG_LOAD') || d.includes('LEVEL_LOAD') || d.includes('MANIFEST_LOAD')){
+        this._signals.add('hls_network_issue');
+      }
+      if (String(type||'').includes('MEDIA')){
+        this._signals.add('hls_media_issue');
+      }
+    }
+
+    requestImmediate(stepName){
+      // Schedule immediate step (but still serialized and safe)
+      this._immediate = stepName;
+    }
+
+    async _tick(){
+      const v = this.player.video;
+
+      // If no channel, skip
+      if (!this.player.currentChannel) return;
+
+      // If user paused intentionally, do not auto-reconnect aggressively
+      if (v.paused){
+        this._signals.clear();
+        return;
+      }
+
+      // If offline: keep last frame; show overlay but do nothing until online
+      if (!navigator.onLine){
+        this.ui.showOverlay('بانتظار الإنترنت...', 'Offline');
+        return;
+      }
+
+      // Determine stall: no progress for N seconds AND buffer low OR waiting signals
+      const now = performance.now();
+      const noProgressSec = (now - this._lastProgressAt) / 1000;
+      const bufSec = this.player.getBufferedSeconds();
+      const likelyStalled = (noProgressSec >= 3.2 && (v.readyState < 3 || bufSec < 0.25)) || this._signals.has('waiting') || this._signals.has('stalled');
+
+      // Immediate requests (fatal)
+      if (this._immediate && !this._busy){
+        const s = this._immediate;
+        this._immediate = null;
+        await this._runImmediate(s);
+        return;
+      }
+
+      if (!likelyStalled){
+        // Healthy
+        if (this.ui.overlay.classList.contains('show')) this.ui.hideOverlay();
+        this._signals.clear();
+        return;
+      }
+
+      // If already busy performing an action, wait
+      if (this._busy) return;
+
+      // Small backoff to avoid spamming actions each second
+      if (this._lastActionAt && (now - this._lastActionAt) < 1800) return;
+
+      // Begin ladder
+      this._busy = true;
+      this._lastActionAt = now;
+
+      try{
+        this.ui.showOverlay('جاري إعادة الاتصال...', 'Buffering / Reconnecting (يحافظ على آخر Frame)');
+        const ok = await this._escalate();
+        if (!ok){
+          // If all steps failed, keep overlay and let next ticks try reload channel
+          this.toast.show('فشل الإصلاح مؤقتاً. سيتم المحاولة مجدداً...', 'bad', 2600);
+        }
+      }catch(err){
+        console.warn('Reconnect ladder error', err);
+      }finally{
+        this._busy = false;
+      }
+    }
+
+    async _runImmediate(stepName){
+      this._busy = true;
+      try{
+        this.ui.showOverlay('إصلاح فوري...', stepName);
+        const ok = await this._runStepByName(stepName);
+        if (!ok) await this._escalate(); // fallback
+      }finally{
+        this._busy = false;
+      }
+    }
+
+    async _escalate(){
+      // Stage progression:
+      // 0 recoverMediaError
+      // 1 startLoad
+      // 2 reloadPlaylist
+      // 3 reloadFragment
+      // 4 reconnectSoft
+      // 5 destroyPlayer
+      // 6 reloadChannel
+      const stages = [
+        { name:'recoverMediaError', title:'إصلاح Media...', msg:'RecoverMediaError' },
+        { name:'startLoad', title:'إعادة تحميل...', msg:'StartLoad()' },
+        { name:'reloadPlaylist', title:'تحديث Playlist...', msg:'Reload Playlist' },
+        { name:'reloadFragment', title:'تحديث Fragment...', msg:'Reload Fragment (Live jump)' },
+        { name:'reconnectSoft', title:'إعادة الاتصال...', msg:'Reconnect' },
+        { name:'destroyPlayer', title:'إصلاح متقدم...', msg:'Destroy Player' },
+        { name:'reloadChannel', title:'إعادة تحميل القناة...', msg:'Reload Channel' }
+      ];
+
+      // Start from current stage and go forward
+      for (let i=this._stage; i<stages.length; i++){
+        const s = stages[i];
+        this.ui.showOverlay(s.title, s.msg);
+
+        // Very important: do not clear <video> for early steps.
+        const ok = await this._runStepByName(s.name);
+
+        if (ok){
+          this._stage = i + 1; // next time start higher if it stalls again
+          // Try play again (non-blocking)
+          this.player.video.play().catch(()=>{});
+          // Keep overlay until 'playing' event
+          this.toast.show(`Reconnect: ${s.msg}`, 'warn', 1600);
+          this._signals.clear();
+          return true;
+        }
+      }
+
+      return false;
+    }
+
+    async _runStepByName(name){
+      switch(name){
+        case 'recoverMediaError': return await this.player.stepRecoverMediaError();
+        case 'startLoad': return await this.player.stepStartLoad();
+        case 'reloadPlaylist': return await this.player.stepReloadPlaylist();
+        case 'reloadFragment': return await this.player.stepReloadFragment();
+        case 'reconnectSoft': return await this.player.stepReconnectSoft();
+        case 'destroyPlayer': return await this.player.stepDestroyPlayer();
+        case 'reloadChannel': return await this.player.stepReloadChannel();
+        default: return false;
+      }
+    }
+  }
+
+  /******************************************************************
+   * App
+   ******************************************************************/
+  class App{
+    constructor(){
+      this.storage = new StorageManager();
+      this.cm = new ChannelManager();
+      this.toast = new ToastManager($('#toasts'));
+
+      this.ui = new UIManager({ toast: this.toast });
+      this.player = new PlayerManager({
+        video: this.ui.video,
+        ui: this.ui,
+        toast: this.toast,
+        storage: this.storage
+      });
+
+      this.net = new NetworkMonitor({ ui: this.ui, toast: this.toast, player: this.player });
+
+      this.favorites = this.storage.getFavorites();
+      this.activeId = '';
+    }
+
+    async start(){
+      // Global error boundary
+      window.addEventListener('error', (e) => {
+        console.warn('Global error', e?.error || e?.message || e);
+        this.toast.show('حدث خطأ غير متوقع (تم تجاهله للحفاظ على التشغيل).', 'warn', 2200);
+      });
+      window.addEventListener('unhandledrejection', (e) => {
+        console.warn('Unhandled rejection', e?.reason || e);
+        this.toast.show('خطأ غير متوقع في الخلفية (تم تجاهله).', 'warn', 2200);
+      });
+
+      // Wait for libs
+      this.ui.showOverlay('جاري التحضير...', 'تحميل مكتبات المشغل');
+      const libsOk = await waitForLibs(9000);
+      if (!libsOk){
+        this.toast.show('تعذر تحميل HLS.js / mpegts.js. تحقق من اتصال الإنترنت.', 'bad', 4200);
+      }
+
+      // Bind UI handlers (event delegation, no memory leaks)
+      this._bindUI();
+
+      // Start network monitor
+      this.net.start();
+
+      // Load channels
+      await this.reloadChannels();
+
+      // Resume last channel
+      const last = this.storage.getLastChannelId();
+      const ch = last ? this.cm.getById(last) : (this.cm.channels[0] || null);
+      if (ch){
+        await this.openChannel(ch, { reason:'resume' });
+      }else{
+        this.ui.showOverlay('لا توجد قنوات', 'تحقق من /api/m3u/default');
+      }
+    }
+
+    _bindUI(){
+      // Tabs
+      const setTab = (tab) => {
+        this.ui.currentTab = tab;
+        for (const b of [this.ui.tabAll, this.ui.tabFav, this.ui.tabRecent]){
+          b.classList.toggle('active', b.dataset.tab === tab);
+        }
+        this.renderList();
+      };
+
+      this.ui.tabAll.addEventListener('click', () => setTab('all'));
+      this.ui.tabFav.addEventListener('click', () => setTab('fav'));
+      this.ui.tabRecent.addEventListener('click', () => setTab('recent'));
+
+      // Search (fast, raf-batched)
+      this.ui.searchInput.addEventListener('input', () => {
+        this.ui.currentQuery = this.ui.searchInput.value;
+        this.renderList();
+      }, { passive:true });
+
+      // Sort
+      this.ui.sortSel.addEventListener('change', () => {
+        this.ui.sortMode = this.ui.sortSel.value;
+        this.renderList();
+      });
+
+      // Reload list
+      this.ui.btnReload.addEventListener('click', async () => {
+        await this.reloadChannels();
+      });
+
+      // List event delegation (single listener, no leaks)
+      this.ui.listEl.addEventListener('click', async (e) => {
+        const favBtn = e.target.closest('[data-fav="1"]');
+        const item = e.target.closest('.item');
+        if (!item) return;
+
+        const id = item.dataset.id;
+        if (!id) return;
+
+        if (favBtn){
+          this.toggleFavorite(id);
+          return;
+        }
+
+        const ch = this.cm.getById(id);
+        if (ch) await this.openChannel(ch, { reason:'user' });
+      });
+
+      // Keyboard navigation on list (TV remotes)
+      this.ui.listEl.addEventListener('keydown', async (e) => {
+        if (e.key === 'ArrowDown'){
+          e.preventDefault();
+          this.ui.focusNext();
+        } else if (e.key === 'ArrowUp'){
+          e.preventDefault();
+          this.ui.focusPrev();
+        } else if (e.key === 'Enter'){
+          e.preventDefault();
+          const id = document.activeElement?.dataset?.id;
+          const ch = id ? this.cm.getById(id) : null;
+          if (ch) await this.openChannel(ch, { reason:'user' });
+        }
+      });
+
+      // Player controls
+      this.ui.btnPlay.addEventListener('click', () => this.player.togglePlay());
+      this.ui.btnMute.addEventListener('click', () => this.player.toggleMute());
+
+      this.ui.volRange.addEventListener('input', () => {
+        const v = clamp(Number(this.ui.volRange.value) / 100, 0, 1);
+        this.player.setVolume(v);
+        this.ui.setVolumeUI(v);
+      }, { passive:true });
+
+      this.ui.btnFull.addEventListener('click', () => this.player.toggleFullscreen(this.ui.playerWrap));
+      this.ui.btnPiP.addEventListener('click', () => this.player.togglePiP());
+
+      // Quality menu open/close
+      this.ui.btnQuality.addEventListener('click', () => {
+        if (!this.player.hls){
+          this.toast.show('Quality متاح فقط لقنوات HLS.', 'warn', 1600);
+          return;
+        }
+        // Build fresh state in case levels updated
+        this.ui.buildQualityMenu({ levels: this.player.levels, activeMode: this.storage.getQualityPref() });
+        this.ui.toggleQualityMenu();
+      });
+
+      // Close quality menu when clicking outside
+      document.addEventListener('click', (e) => {
+        if (!this.ui.qMenu.classList.contains('show')) return;
+        const inside = this.ui.qMenu.contains(e.target) || this.ui.btnQuality.contains(e.target);
+        if (!inside) this.ui.hideQualityMenu();
+      }, { passive:true });
+
+      // Quality selection delegation
+      this.ui.qMenu.addEventListener('click', (e) => {
+        const mi = e.target.closest('.mi');
+        if (!mi) return;
+        const qkey = mi.dataset.qkey || '';
+        if (qkey === 'auto'){
+          this.player.onQualitySelect({ mode:'auto' });
+          this.ui.hideQualityMenu();
+          return;
+        }
+        const height = Number(mi.dataset.height || 0);
+        const levelIndex = Number(mi.dataset.level || -1);
+        if (height > 0){
+          this.player.onQualitySelect({ mode:'height', height });
+        }else if (Number.isFinite(levelIndex) && levelIndex >= 0){
+          this.player.onQualitySelect({ levelIndex });
+        }
+        this.ui.hideQualityMenu();
+      });
+
+      // Bottom favorite toggle
+      this.ui.btnFavToggle.addEventListener('click', () => {
+        if (!this.activeId) return;
+        this.toggleFavorite(this.activeId);
+      });
+
+      // Keyboard shortcuts (Smarters-like)
+      document.addEventListener('keydown', async (e) => {
+        // ignore when typing
+        const ae = document.activeElement;
+        const typing = ae && (ae.tagName === 'INPUT' || ae.tagName === 'TEXTAREA' || ae.isContentEditable);
+        if (typing) return;
+
+        const k = e.key;
+
+        if (k === ' ' || e.code === 'Space'){
+          e.preventDefault();
+          this.player.togglePlay();
+          return;
+        }
+        if (k.toLowerCase() === 'm'){
+          this.player.toggleMute();
+          return;
+        }
+        if (k.toLowerCase() === 'f'){
+          await this.player.toggleFullscreen(this.ui.playerWrap);
+          return;
+        }
+        if (k === 'ArrowUp'){
+          e.preventDefault();
+          this.player.bumpVolume(+0.05);
+          return;
+        }
+        if (k === 'ArrowDown'){
+          e.preventDefault();
+          this.player.bumpVolume(-0.05);
+          return;
+        }
+        if (k === 'PageUp'){
+          e.preventDefault();
+          await this.openPrevChannel();
+          return;
+        }
+        if (k === 'PageDown'){
+          e.preventDefault();
+          await this.openNextChannel();
+          return;
+        }
+      });
+    }
+
+    async reloadChannels(){
+      try{
+        this.ui.showOverlay('جاري تحميل القنوات...', 'قراءة /api/m3u/default');
+        const channels = await this.cm.load();
+
+        this.ui.chCount.textContent = String(channels.length);
+
+        // Ensure nodes exist (reused)
+        this.ui.ensureChannelNodes(channels, this.favorites);
+
+        this.toast.show('تم تحميل قائمة القنوات.', 'ok', 1600);
+
+        // Render list according to current filters
+        this.renderList();
+
+        // Hide overlay if we aren't playing yet (player will hide on playing)
+        if (!this.player.currentChannel) this.ui.hideOverlay();
+      }catch(err){
+        this.ui.showOverlay('فشل تحميل القائمة', String(err?.message || err));
+        this.toast.show('فشل تحميل قائمة القنوات.', 'bad', 2800);
+      }
+    }
+
+    renderList(){
+      try{
+        const recent = this.storage.getRecent();
+        this.ui.renderChannelListView({
+          channels: this.cm.channels,
+          favoritesSet: this.favorites,
+          recentIds: recent,
+          tab: this.ui.currentTab,
+          query: this.ui.currentQuery,
+          sortMode: this.ui.sortMode,
+          activeId: this.activeId
+        });
+      }catch(err){
+        console.warn('Render list error', err);
+      }
+    }
+
+    toggleFavorite(id){
+      try{
+        if (this.favorites.has(id)){
+          this.favorites.delete(id);
+          this.toast.show('تمت الإزالة من المفضلة', 'ok', 1500);
+        }else{
+          this.favorites.add(id);
+          this.toast.show('تمت الإضافة إلى المفضلة', 'ok', 1500);
+        }
+        this.storage.setFavorites(this.favorites);
+
+        // Update visuals only (no full render needed)
+        this.ui.updateFavoriteVisual(id, this.favorites.has(id));
+
+        // Update bottom button text
+        const ch = this.cm.getById(id);
+        if (ch && id === this.activeId){
+          this.ui.setChannelInfo(ch, this.favorites.has(id));
+        }
+
+        // If we are in favorites tab, refresh view (reusing nodes)
+        if (this.ui.currentTab === 'fav'){
+          this.renderList();
+        }
+      }catch(err){
+        console.warn('Favorite toggle error', err);
+      }
+    }
+
+    async openChannel(ch, { reason='user' } = {}){
+      try{
+        this.activeId = ch.id;
+
+        // Persist last channel + recent
+        this.storage.setLastChannelId(ch.id);
+        this.storage.pushRecent(ch.id);
+
+        // Update UI early (no black)
+        this.ui.setChannelInfo(ch, this.favorites.has(ch.id));
+        this.ui.setActiveInList(ch.id);
+
+        // Play (player handles freeze + hard stop)
+        await this.player.playChannel(ch, { reason });
+
+        // Update list view (recent tab ordering etc.)
+        this.renderList();
+      }catch(err){
+        console.warn('Open channel error', err);
+        this.toast.show('تعذر تشغيل القناة. سيتم المحاولة تلقائياً.', 'bad', 2600);
+      }
+    }
+
+    async openNextChannel(){
+      const visible = this.ui.getVisibleIds();
+      if (!visible.length) return;
+      const idx = visible.indexOf(this.activeId);
+      const nextId = visible[(idx >= 0 ? idx + 1 : 0) % visible.length];
+      const ch = this.cm.getById(nextId);
+      if (ch) await this.openChannel(ch, { reason:'user' });
+    }
+
+    async openPrevChannel(){
+      const visible = this.ui.getVisibleIds();
+      if (!visible.length) return;
+      const idx = visible.indexOf(this.activeId);
+      const prevId = visible[(idx >= 0 ? (idx - 1 + visible.length) : 0) % visible.length];
+      const ch = this.cm.getById(prevId);
+      if (ch) await this.openChannel(ch, { reason:'user' });
+    }
+  }
+
+  /******************************************************************
+   * Boot
+   ******************************************************************/
+  const app = new App();
+
+  // Ensure cleanup to prevent memory leaks
+  window.addEventListener('beforeunload', () => {
+    try{ app.net.stop(); }catch{}
+    try{ app.player.destroyAll(); }catch{}
+  });
+
+  app.start();
+
+})();
+</script>
+</body>
+</html>
