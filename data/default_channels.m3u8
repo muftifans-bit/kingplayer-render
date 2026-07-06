@@ -17,3 +17,84 @@ http://13.51.56.140/hls/dsmax1/index.m3u8
 http://13.51.56.140/hls/dsmax2/index.m3u8
 #EXTINF:-1,MAX 4
 http://13.51.56.140/hls/max4/index.m3u8
+#EXTM3U
+
+# ====== BEIN MAX 1 ======
+
+#EXTINF:-1,BEIN MAX 1 4K (SA)
+http://13.51.56.140/hls/_wc_bein_max_1_4k_sa/index.m3u8
+#EXTINF:-1,BEIN MAX 1 4K (NX)
+http://13.51.56.140/hls/_wc_bein_max_1_4k_nx/index.m3u8
+#EXTINF:-1,BEIN MAX 1 FHD (SS)
+http://13.51.56.140/hls/_wc_bein_max_1_fhd_ss/index.m3u8
+#EXTINF:-1,BEIN MAX 1 FHD (NX)
+http://13.51.56.140/hls/_wc_bein_max_1_fhd_nx/index.m3u8
+#EXTINF:-1,BEIN MAX 1 FHD (MSH)
+http://13.51.56.140/hls/_wc_bein_max_1_fhd_msh/index.m3u8
+#EXTINF:-1,BEIN MAX 1 HD (SA)
+http://13.51.56.140/hls/_wc_bein_max_1_hd_sa/index.m3u8
+#EXTINF:-1,BEIN MAX 1 HD (SS)
+http://13.51.56.140/hls/_wc_bein_max_1_hd_ss/index.m3u8
+#EXTINF:-1,BEIN MAX 1 HD (NX)
+http://13.51.56.140/hls/_wc_bein_max_1_hd_nx/index.m3u8
+#EXTINF:-1,BEIN MAX 1 HD (MSH)
+http://13.51.56.140/hls/_wc_bein_max_1_hd_msh/index.m3u8
+#EXTINF:-1,BEIN MAX 1 SD (SA)
+http://13.51.56.140/hls/_wc_bein_max_1_sd_sa/index.m3u8
+#EXTINF:-1,BEIN MAX 1 SD (NX)
+http://13.51.56.140/hls/_wc_bein_max_1_sd_nx/index.m3u8
+#EXTINF:-1,BEIN MAX 1 SD (MSH)
+http://13.51.56.140/hls/_wc_bein_max_1_sd_msh/index.m3u8
+
+# ====== BEIN MAX 2 ======
+
+#EXTINF:-1,BEIN MAX 2 4K (SA)
+http://13.51.56.140/hls/_wc_bein_max_2_4k_sa/index.m3u8
+#EXTINF:-1,BEIN MAX 2 4K (NX)
+http://13.51.56.140/hls/_wc_bein_max_2_4k_nx/index.m3u8
+#EXTINF:-1,BEIN MAX 2 FHD (SS)
+http://13.51.56.140/hls/_wc_bein_max_2_fhd_ss/index.m3u8
+#EXTINF:-1,BEIN MAX 2 FHD (NX)
+http://13.51.56.140/hls/_wc_bein_max_2_fhd_nx/index.m3u8
+#EXTINF:-1,BEIN MAX 2 FHD (MSH)
+http://13.51.56.140/hls/_wc_bein_max_2_fhd_msh/index.m3u8
+#EXTINF:-1,BEIN MAX 2 HD (SA)
+http://13.51.56.140/hls/_wc_bein_max_2_hd_sa/index.m3u8
+#EXTINF:-1,BEIN MAX 2 HD (SS)
+http://13.51.56.140/hls/_wc_bein_max_2_hd_ss/index.m3u8
+#EXTINF:-1,BEIN MAX 2 HD (NX)
+http://13.51.56.140/hls/_wc_bein_max_2_hd_nx/index.m3u8
+#EXTINF:-1,BEIN MAX 2 HD (MSH)
+http://13.51.56.140/hls/_wc_bein_max_2_hd_msh/index.m3u8
+#EXTINF:-1,BEIN MAX 2 SD (SA)
+http://13.51.56.140/hls/_wc_bein_max_2_sd_sa/index.m3u8
+#EXTINF:-1,BEIN MAX 2 SD (NX)
+http://13.51.56.140/hls/_wc_bein_max_2_sd_nx/index.m3u8
+#EXTINF:-1,BEIN MAX 2 SD (MSH)
+http://13.51.56.140/hls/_wc_bein_max_2_sd_msh/index.m3u8
+
+# ====== BEIN MAX 3 ======
+
+#EXTINF:-1,BEIN MAX 3 4K (SA)
+http://13.51.56.140/hls/_wc_bein_max_3_4k_sa/index.m3u8
+#EXTINF:-1,BEIN MAX 3 4K (MX)
+http://13.51.56.140/hls/_wc_bein_max_3_4k_mx/index.m3u8
+#EXTINF:-1,BEIN MAX 3 FHD (MX)
+http://13.51.56.140/hls/_wc_bein_max_3_fhd_mx/index.m3u8
+#EXTINF:-1,BEIN MAX 3 HD (SA)
+http://13.51.56.140/hls/_wc_bein_max_3_hd_sa/index.m3u8
+#EXTINF:-1,BEIN MAX 3 SD (SA)
+http://13.51.56.140/hls/_wc_bein_max_3_sd_sa/index.m3u8
+
+# ====== BEIN MAX 4 ======
+
+#EXTINF:-1,BEIN MAX 4 4K (SA)
+http://13.51.56.140/hls/_wc_bein_max_4_4k_sa/index.m3u8
+#EXTINF:-1,BEIN MAX 4 4K (MX)
+http://13.51.56.140/hls/_wc_bein_max_4_4k_mx/index.m3u8
+#EXTINF:-1,BEIN MAX 4 FHD (MX)
+http://13.51.56.140/hls/_wc_bein_max_4_fhd_mx/index.m3u8
+#EXTINF:-1,BEIN MAX 4 HD (SA)
+http://13.51.56.140/hls/_wc_bein_max_4_hd_sa/index.m3u8
+#EXTINF:-1,BEIN MAX 4 SD (SA)
+http://13.51.56.140/hls/_wc_bein_max_4_sd_sa/index.m3u8
