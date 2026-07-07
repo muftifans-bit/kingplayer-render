@@ -277,11 +277,8 @@ def player_v2():
             headers={"Cache-Control": "no-store"},
         )
 
-
 @app.route("/api/m3u/default", methods=["GET","OPTIONS"])
 def m3u_default():
-    if request.method == "OPTIONS":
-    
     if request.method == "OPTIONS":
         return _cors_preflight_ok()
 
@@ -291,7 +288,6 @@ def m3u_default():
     with open(M3U_PATH, "r", encoding="utf-8", errors="ignore") as f:
         data = f.read()
 
-    # Return playlist as-is (client will proxy segments through /api/stream/proxy)
     return Response(
         data,
         content_type="application/vnd.apple.mpegurl",
