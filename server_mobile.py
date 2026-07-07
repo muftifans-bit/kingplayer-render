@@ -248,6 +248,37 @@ def home():
         html = f.read()
     return Response(html, content_type="text/html; charset=utf-8", headers={"Cache-Control": "no-store"})
 
+@app.route("/", methods=["GET"])
+def home():
+    path = PLAYER_V2_PATH if os.path.exists(PLAYER_V2_PATH) else PLAYER_PATH
+
+    if not os.path.exists(path):
+        return "player.html / player_v2.html not found inside data folder", 404
+
+    with open(path, "r", encoding="utf-8", errors="ignore") as f:
+        html = f.read()
+
+    return Response(
+        html,
+        content_type="text/html; charset=utf-8",
+        headers={"Cache-Control": "no-store"},
+    )
+
+
+@app.route("/player_v2", methods=["GET"])
+def player_v2():
+    if not os.path.exists(PLAYER_V2_PATH):
+        return "player_v2.html not found", 404
+
+    with open(PLAYER_V2_PATH, "r", encoding="utf-8", errors="ignore") as f:
+        return Response(
+            f.read(),
+            content_type="text/html; charset=utf-8",
+            headers={"Cache-Control": "no-store"},
+        )
+
+@app.route("/api/m3u/default", methods=["GET", "OPTIONS"])
+def m3u_default():
 @app.route("/api/m3u/default", methods=["GET", "OPTIONS"])
 def m3u_default():
     if request.method == "OPTIONS":
