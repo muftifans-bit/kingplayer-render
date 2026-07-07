@@ -279,8 +279,6 @@ def player_v2():
 
 @app.route("/api/m3u/default", methods=["GET", "OPTIONS"])
 def m3u_default():
-@app.route("/api/m3u/default", methods=["GET", "OPTIONS"])
-def m3u_default():
     if request.method == "OPTIONS":
         return _cors_preflight_ok()
 
