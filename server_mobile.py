@@ -1,23 +1,3 @@
-python
-# server_mobile.py
-# Production-ready IPTV/HLS Proxy for Flask
-#
-# Routes (MUST remain):
-#   /
-#   /api/m3u/default
-#   /api/stream/probe
-#   /api/stream/proxy
-#
-# Goals:
-# - Full HLS support: m3u8, ts, m4s, key, subtitles, init segments, i-frame playlists
-# - Rewrite ALL playlist URLs to: /api/stream/proxy?url=...
-# - Forward important request headers (UA/Referer/Origin/Range/Accept/Accept-Encoding/Connection/Host/Cache-Control)
-# - Support 206 / byte-range streaming via generator (no full download)
-# - Copy important response headers (Content-Type/Length/Accept-Ranges/Content-Range/ETag/Last-Modified/Cache-Control)
-# - requests.Session connection pooling + redirects
-# - CORS fixed (including OPTIONS preflight)
-# - Gunicorn/Render compatible (app is module-level)
-
 from __future__ import annotations
 
 import os
