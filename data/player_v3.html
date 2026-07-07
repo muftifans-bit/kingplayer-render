@@ -1,0 +1,2517 @@
+<!--
+  File: data/player_v2.html
+  IPTV Player (Vanilla JS) - Production Ready
+  Endpoints (DO NOT CHANGE):
+    GET /api/m3u/default
+    GET /api/stream/probe
+    GET /api/stream/proxy
+
+  Libraries allowed:
+    - HLS.js
+    - mpegts.js
+-->
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
+  <meta name="color-scheme" content="dark" />
+  <title>IPTV Player v2</title>
+
+  <!-- HLS.js + mpegts.js (only external libs allowed) -->
+  <script defer src="https://cdn.jsdelivr.net/npm/hls.js@1.5.17/dist/hls.min.js"></script>
+  <script defer src="https://cdn.jsdelivr.net/npm/mpegts.js@1.7.3/dist/mpegts.min.js"></script>
+
+  <style>
+    :root{
+      --bg0:#070A0F;
+      --bg1:#0B1020;
+      --card:#0E1630;
+      --card2:#0B132B;
+      --stroke:rgba(255,255,255,.08);
+      --stroke2:rgba(255,255,255,.12);
+      --text:#EAF0FF;
+      --muted:rgba(234,240,255,.70);
+      --muted2:rgba(234,240,255,.55);
+      --brand:#5DA7FF;
+      --brand2:#8A5DFF;
+      --good:#27D17F;
+      --warn:#FFCA3A;
+      --bad:#FF4D6D;
+
+      --shadow: 0 12px 38px rgba(0,0,0,.45);
+      --radius: 16px;
+      --radius2: 12px;
+
+      --sidebarW: 360px;
+      --headerH: 64px;
+      --bottomH: 64px;
+
+      --font: system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, "Noto Sans Arabic", "Noto Sans", sans-serif;
+    }
+
+    *{ box-sizing:border-box; }
+    html,body{ height:100%; }
+    body{
+      margin:0;
+      font-family:var(--font);
+      background:
+        radial-gradient(1200px 700px at 20% -10%, rgba(93,167,255,.18), transparent 60%),
+        radial-gradient(1000px 600px at 110% 10%, rgba(138,93,255,.16), transparent 55%),
+        linear-gradient(180deg, var(--bg0), var(--bg1));
+      color:var(--text);
+      overflow:hidden;
+    }
+
+    /* Scrollbar */
+    ::-webkit-scrollbar{ width:10px; height:10px; }
+    ::-webkit-scrollbar-thumb{ background:rgba(255,255,255,.12); border-radius:999px; }
+    ::-webkit-scrollbar-thumb:hover{ background:rgba(255,255,255,.18); }
+
+    .app{
+      height:100%;
+      display:flex;
+      flex-direction:column;
+    }
+
+    /* Header */
+    header{
+      height:var(--headerH);
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      padding:12px 14px;
+      gap:12px;
+      border-bottom:1px solid var(--stroke);
+      backdrop-filter: blur(10px);
+      background: rgba(10,14,28,.72);
+    }
+
+    .brand{
+      display:flex; align-items:center; gap:10px; min-width:220px;
+    }
+    .brand-badge{
+      width:40px; height:40px; border-radius:12px;
+      background:
+        radial-gradient(16px 16px at 30% 25%, rgba(255,255,255,.22), transparent 60%),
+        linear-gradient(135deg, rgba(93,167,255,.95), rgba(138,93,255,.95));
+      box-shadow: 0 10px 24px rgba(93,167,255,.12);
+      display:flex; align-items:center; justify-content:center;
+      border:1px solid rgba(255,255,255,.18);
+      flex: 0 0 auto;
+    }
+    .brand-badge svg{ width:22px; height:22px; opacity:.95; }
+    .brand h1{
+      font-size:14px; line-height:1.1; margin:0;
+      letter-spacing:.2px;
+    }
+    .brand .sub{
+      font-size:12px; color:var(--muted2); margin-top:2px;
+      white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
+      max-width:260px;
+    }
+
+    .header-center{
+      flex:1;
+      display:flex;
+      align-items:center;
+      gap:10px;
+      max-width: 920px;
+    }
+
+    .search{
+      flex:1;
+      display:flex;
+      align-items:center;
+      gap:10px;
+      padding:10px 12px;
+      background: rgba(255,255,255,.06);
+      border:1px solid var(--stroke);
+      border-radius: 14px;
+      box-shadow: inset 0 1px 0 rgba(255,255,255,.06);
+      min-width: 220px;
+    }
+    .search svg{ width:18px; height:18px; opacity:.85; }
+    .search input{
+      width:100%;
+      border:0; outline:0;
+      background:transparent;
+      color:var(--text);
+      font-size:14px;
+    }
+    .search input::placeholder{ color: rgba(234,240,255,.45); }
+
+    .tabs{
+      display:flex;
+      gap:8px;
+      align-items:center;
+      padding:6px;
+      border-radius: 14px;
+      border: 1px solid var(--stroke);
+      background: rgba(255,255,255,.04);
+    }
+    .tab-btn{
+      border:0;
+      background:transparent;
+      color:var(--muted);
+      padding:10px 12px;
+      border-radius:12px;
+      cursor:pointer;
+      font-size:13px;
+      display:flex;
+      align-items:center;
+      gap:8px;
+      user-select:none;
+    }
+    .tab-btn svg{ width:16px; height:16px; opacity:.9; }
+    .tab-btn.active{
+      background: rgba(93,167,255,.14);
+      color: var(--text);
+      border: 1px solid rgba(93,167,255,.20);
+    }
+    .tab-btn:focus-visible{ outline:2px solid rgba(93,167,255,.45); outline-offset:2px; }
+
+    .header-right{
+      display:flex; align-items:center; gap:10px;
+      min-width: 280px;
+      justify-content:flex-end;
+    }
+
+    .pill{
+      display:flex; align-items:center; gap:8px;
+      padding:8px 10px;
+      border-radius: 999px;
+      border:1px solid var(--stroke);
+      background: rgba(255,255,255,.04);
+      color: var(--muted);
+      font-size:12px;
+      white-space:nowrap;
+      user-select:none;
+    }
+    .dot{
+      width:8px; height:8px; border-radius:50%;
+      background: var(--muted2);
+      box-shadow: 0 0 0 4px rgba(255,255,255,.06);
+    }
+    .dot.online{ background: var(--good); box-shadow: 0 0 0 4px rgba(39,209,127,.14); }
+    .dot.offline{ background: var(--bad); box-shadow: 0 0 0 4px rgba(255,77,109,.14); }
+
+    /* Layout */
+    .main{
+      flex:1;
+      display:flex;
+      min-height:0;
+    }
+
+    /* Sidebar */
+    aside{
+      width: var(--sidebarW);
+      border-left:1px solid var(--stroke);
+      background: rgba(8,12,24,.65);
+      backdrop-filter: blur(12px);
+      display:flex;
+      flex-direction:column;
+      min-height:0;
+    }
+
+    .sidebar-top{
+      padding:12px;
+      border-bottom:1px solid var(--stroke);
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap:10px;
+    }
+    .count{
+      font-size:12px;
+      color: var(--muted2);
+    }
+    .small-btn{
+      border:1px solid var(--stroke);
+      background: rgba(255,255,255,.05);
+      color: var(--text);
+      border-radius: 12px;
+      padding:8px 10px;
+      font-size:12px;
+      cursor:pointer;
+      user-select:none;
+    }
+    .small-btn:hover{ background: rgba(255,255,255,.08); }
+    .small-btn:active{ transform: translateY(1px); }
+    .small-btn:focus-visible{ outline:2px solid rgba(93,167,255,.45); outline-offset:2px; }
+
+    .channel-list{
+      flex:1;
+      min-height:0;
+      overflow:auto;
+      padding:10px;
+    }
+
+    .group-sep{
+      margin: 12px 6px 8px;
+      font-size:12px;
+      color: rgba(234,240,255,.55);
+      display:flex;
+      align-items:center;
+      gap:8px;
+    }
+    .group-sep::after{
+      content:"";
+      flex:1;
+      height:1px;
+      background: rgba(255,255,255,.08);
+    }
+
+    .ch-item{
+      display:flex;
+      align-items:center;
+      gap:10px;
+      padding:10px;
+      border-radius: 14px;
+      border:1px solid transparent;
+      cursor:pointer;
+      user-select:none;
+      outline:none;
+    }
+    .ch-item:hover{ background: rgba(255,255,255,.05); }
+    .ch-item.active{
+      background: rgba(93,167,255,.12);
+      border-color: rgba(93,167,255,.22);
+    }
+    .ch-item:focus-visible{
+      outline:2px solid rgba(93,167,255,.40);
+      outline-offset:2px;
+    }
+
+    .logo{
+      width:44px; height:44px;
+      border-radius: 12px;
+      background: rgba(255,255,255,.06);
+      border:1px solid rgba(255,255,255,.10);
+      overflow:hidden;
+      flex: 0 0 auto;
+      display:flex; align-items:center; justify-content:center;
+    }
+    .logo img{
+      width:100%; height:100%;
+      object-fit: cover;
+      display:block;
+    }
+    .logo .ph{
+      width:100%; height:100%;
+      display:flex; align-items:center; justify-content:center;
+      font-weight:700;
+      letter-spacing:.4px;
+      color: rgba(255,255,255,.92);
+      background:
+        radial-gradient(18px 18px at 30% 25%, rgba(255,255,255,.18), transparent 60%),
+        linear-gradient(135deg, rgba(93,167,255,.35), rgba(138,93,255,.30));
+    }
+    .ch-meta{
+      min-width:0;
+      flex:1;
+    }
+    .ch-name{
+      font-size:14px;
+      color: var(--text);
+      white-space:nowrap;
+      overflow:hidden;
+      text-overflow:ellipsis;
+    }
+    .ch-group{
+      margin-top:3px;
+      font-size:12px;
+      color: rgba(234,240,255,.55);
+      white-space:nowrap;
+      overflow:hidden;
+      text-overflow:ellipsis;
+    }
+    .ch-actions{
+      display:flex; align-items:center; gap:8px;
+      flex: 0 0 auto;
+    }
+    .fav{
+      width:32px; height:32px;
+      border-radius: 10px;
+      border:1px solid var(--stroke);
+      background: rgba(255,255,255,.04);
+      display:flex; align-items:center; justify-content:center;
+      cursor:pointer;
+    }
+    .fav svg{ width:16px; height:16px; opacity:.9; }
+    .fav.on{
+      border-color: rgba(255,202,58,.22);
+      background: rgba(255,202,58,.10);
+    }
+
+    /* Player area */
+    .content{
+      flex:1;
+      display:flex;
+      flex-direction:column;
+      min-width:0;
+      min-height:0;
+    }
+
+    .player-wrap{
+      flex:1;
+      min-height:0;
+      position:relative;
+      margin: 12px;
+      border-radius: var(--radius);
+      overflow:hidden;
+      border:1px solid rgba(255,255,255,.10);
+      background: linear-gradient(180deg, rgba(255,255,255,.04), rgba(0,0,0,.08));
+      box-shadow: var(--shadow);
+    }
+
+    .video{
+      width:100%;
+      height:100%;
+      background: #000;
+      display:block;
+      /* Important for TVs to avoid weird scaling */
+      object-fit: contain;
+    }
+
+    /* Overlays */
+    .top-left-badges{
+      position:absolute;
+      top: 14px;
+      left: 14px;
+      display:flex;
+      align-items:center;
+      gap:10px;
+      z-index: 5;
+      pointer-events:none;
+    }
+    .live-badge{
+      display:flex;
+      align-items:center;
+      gap:8px;
+      padding:8px 10px;
+      border-radius: 999px;
+      font-size:12px;
+      font-weight:700;
+      letter-spacing:.25px;
+      border:1px solid rgba(255,77,109,.25);
+      background: rgba(255,77,109,.14);
+      color: rgba(255,255,255,.95);
+      text-transform: uppercase;
+    }
+    .live-dot{
+      width:8px; height:8px; border-radius:50%;
+      background: var(--bad);
+      box-shadow: 0 0 0 6px rgba(255,77,109,.12);
+    }
+    .quality-badge{
+      padding:8px 10px;
+      border-radius: 999px;
+      font-size:12px;
+      border:1px solid var(--stroke);
+      background: rgba(0,0,0,.25);
+      color: rgba(234,240,255,.88);
+    }
+
+    .loading{
+      position:absolute;
+      inset:0;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      flex-direction:column;
+      gap:12px;
+      z-index: 6;
+      background:
+        radial-gradient(800px 500px at 20% 10%, rgba(93,167,255,.20), transparent 60%),
+        radial-gradient(600px 400px at 100% 20%, rgba(138,93,255,.16), transparent 55%),
+        linear-gradient(180deg, rgba(10,14,28,.82), rgba(0,0,0,.70));
+      backdrop-filter: blur(10px);
+      pointer-events: none;
+      opacity:0;
+      transition: opacity .18s ease;
+    }
+    .loading.show{ opacity:1; }
+    .spinner{
+      width:44px; height:44px;
+      border-radius: 50%;
+      border: 3px solid rgba(255,255,255,.14);
+      border-top-color: rgba(93,167,255,.95);
+      animation: spin 0.9s linear infinite;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .loading .title{
+      font-size:14px;
+      color: rgba(234,240,255,.95);
+      font-weight:700;
+      letter-spacing:.2px;
+    }
+    .loading .msg{
+      font-size:12px;
+      color: rgba(234,240,255,.65);
+      text-align:center;
+      max-width: 520px;
+      padding: 0 16px;
+    }
+
+    /* Controls overlay */
+    .controls{
+      position:absolute;
+      left: 0; right: 0; bottom: 0;
+      padding: 12px 12px 12px;
+      z-index: 7;
+      display:flex;
+      align-items:flex-end;
+      justify-content:space-between;
+      gap:12px;
+      background: linear-gradient(180deg, transparent 0%, rgba(0,0,0,.55) 42%, rgba(0,0,0,.74) 100%);
+      opacity: 1;
+      transition: opacity .20s ease;
+    }
+    .controls-left, .controls-right{
+      display:flex;
+      align-items:center;
+      gap:10px;
+    }
+    .ctrl{
+      width:42px; height:42px;
+      border-radius: 14px;
+      border: 1px solid rgba(255,255,255,.12);
+      background: rgba(255,255,255,.06);
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      cursor:pointer;
+      user-select:none;
+    }
+    .ctrl:hover{ background: rgba(255,255,255,.10); }
+    .ctrl:active{ transform: translateY(1px); }
+    .ctrl:focus-visible{ outline:2px solid rgba(93,167,255,.45); outline-offset:2px; }
+
+    .ctrl svg{ width:18px; height:18px; opacity:.95; }
+
+    .vol{
+      display:flex; align-items:center; gap:10px;
+      padding: 10px 12px;
+      border-radius: 14px;
+      border: 1px solid rgba(255,255,255,.12);
+      background: rgba(255,255,255,.06);
+      min-width: 190px;
+    }
+    .vol label{ font-size:12px; color: rgba(234,240,255,.78); }
+    input[type="range"]{
+      -webkit-appearance:none;
+      appearance:none;
+      height: 4px;
+      width: 120px;
+      background: rgba(255,255,255,.18);
+      border-radius: 999px;
+      outline:none;
+    }
+    input[type="range"]::-webkit-slider-thumb{
+      -webkit-appearance:none;
+      appearance:none;
+      width:16px; height:16px;
+      border-radius: 50%;
+      background: rgba(93,167,255,.96);
+      border: 2px solid rgba(255,255,255,.22);
+      box-shadow: 0 6px 18px rgba(93,167,255,.18);
+    }
+
+    .quality-menu{
+      position: relative;
+    }
+    .menu{
+      position:absolute;
+      bottom: 52px;
+      left: 0;
+      min-width: 190px;
+      border-radius: 14px;
+      border: 1px solid rgba(255,255,255,.12);
+      background: rgba(10,14,28,.92);
+      backdrop-filter: blur(10px);
+      box-shadow: var(--shadow);
+      overflow:hidden;
+      display:none;
+    }
+    .menu.show{ display:block; }
+    .menu .mi{
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap:10px;
+      padding:10px 12px;
+      cursor:pointer;
+      user-select:none;
+      border-bottom:1px solid rgba(255,255,255,.06);
+      font-size:13px;
+      color: rgba(234,240,255,.88);
+    }
+    .menu .mi:last-child{ border-bottom:0; }
+    .menu .mi:hover{ background: rgba(255,255,255,.06); }
+    .mi .tag{
+      font-size:11px;
+      color: rgba(234,240,255,.55);
+    }
+    .mi.active{
+      background: rgba(93,167,255,.12);
+    }
+
+    /* Bottom info bar */
+    .info{
+      height: var(--bottomH);
+      border-top: 1px solid var(--stroke);
+      background: rgba(10,14,28,.72);
+      backdrop-filter: blur(10px);
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap:12px;
+      padding: 10px 14px;
+    }
+    .info-left{
+      display:flex; align-items:center; gap:12px;
+      min-width: 320px;
+      flex: 1;
+      min-width:0;
+    }
+    .info-logo{
+      width:44px; height:44px;
+      border-radius: 14px;
+      border:1px solid rgba(255,255,255,.10);
+      overflow:hidden;
+      background: rgba(255,255,255,.06);
+      flex: 0 0 auto;
+      display:flex; align-items:center; justify-content:center;
+    }
+    .info-logo img{ width:100%; height:100%; object-fit:cover; display:block; }
+    .info-meta{ min-width:0; }
+    .info-title{
+      font-size:14px; font-weight:800;
+      white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
+    }
+    .info-sub{
+      margin-top:2px;
+      font-size:12px;
+      color: rgba(234,240,255,.55);
+      white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
+    }
+    .info-actions{
+      display:flex; align-items:center; gap:10px;
+      flex: 0 0 auto;
+    }
+
+    .stats{
+      display:flex;
+      align-items:center;
+      gap:8px;
+      flex-wrap:wrap;
+      justify-content:flex-end;
+      min-width: 420px;
+    }
+    .stat{
+      font-size:12px;
+      color: rgba(234,240,255,.78);
+      padding:8px 10px;
+      border-radius:999px;
+      border:1px solid rgba(255,255,255,.10);
+      background: rgba(255,255,255,.04);
+      white-space:nowrap;
+    }
+    .stat strong{ color: rgba(234,240,255,.95); font-weight:800; }
+
+    /* Toast */
+    .toast{
+      position: fixed;
+      top: calc(var(--headerH) + 14px);
+      right: 14px;
+      z-index: 100;
+      display:flex;
+      flex-direction:column;
+      gap:10px;
+      pointer-events:none;
+    }
+    .toast .t{
+      pointer-events:none;
+      max-width: 520px;
+      padding: 12px 12px;
+      border-radius: 14px;
+      border: 1px solid rgba(255,255,255,.12);
+      background: rgba(10,14,28,.92);
+      backdrop-filter: blur(10px);
+      box-shadow: var(--shadow);
+      color: rgba(234,240,255,.92);
+      font-size: 13px;
+    }
+    .t.ok{ border-color: rgba(39,209,127,.22); }
+    .t.warn{ border-color: rgba(255,202,58,.22); }
+    .t.bad{ border-color: rgba(255,77,109,.22); }
+
+    /* Responsive */
+    @media (max-width: 1000px){
+      :root{ --sidebarW: 330px; }
+      .stats{ min-width: 320px; }
+      .brand{ min-width: 160px; }
+      .header-right{ min-width: 210px; }
+    }
+    @media (max-width: 820px){
+      aside{ display:none; }
+      .stats{ display:none; }
+      .brand .sub{ display:none; }
+      .tabs{ display:none; }
+    }
+  </style>
+</head>
+
+<body>
+<div class="app">
+  <header>
+    <div class="brand">
+      <div class="brand-badge" aria-hidden="true" title="IPTV">
+        <svg viewBox="0 0 24 24" fill="none">
+          <path d="M4 7.2C4 5.985 4.985 5 6.2 5h11.6C19.015 5 20 5.985 20 7.2v9.6c0 1.215-.985 2.2-2.2 2.2H6.2C4.985 19 4 18.015 4 16.8V7.2Z" stroke="rgba(255,255,255,.9)" stroke-width="1.6"/>
+          <path d="M10 9.5 15 12l-5 2.5V9.5Z" fill="rgba(255,255,255,.9)"/>
+        </svg>
+      </div>
+      <div style="min-width:0">
+        <h1>IPTV Player v2</h1>
+        <div class="sub" id="hdrSub">قريب من تجربة IPTV Smarters (نفس API)</div>
+      </div>
+    </div>
+
+    <div class="header-center">
+      <div class="search" role="search">
+        <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+          <path d="M10.5 18.5a8 8 0 1 1 0-16 8 8 0 0 1 0 16Z" stroke="rgba(255,255,255,.85)" stroke-width="1.6"/>
+          <path d="M16.6 16.6 21 21" stroke="rgba(255,255,255,.85)" stroke-width="1.6" stroke-linecap="round"/>
+        </svg>
+        <input id="searchInput" type="text" placeholder="ابحث عن قناة..." autocomplete="off" inputmode="search" />
+      </div>
+
+      <div class="tabs" aria-label="Channel Tabs">
+        <button class="tab-btn active" id="tabAll" type="button" data-tab="all">
+          <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+            <path d="M4 6.5h16M4 12h16M4 17.5h16" stroke="rgba(255,255,255,.85)" stroke-width="1.6" stroke-linecap="round"/>
+          </svg>
+          الكل
+        </button>
+        <button class="tab-btn" id="tabFav" type="button" data-tab="fav">
+          <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+            <path d="M12 17.3 6.8 20l1-5.7L3.6 10.6l5.8-.8L12 4.5l2.6 5.3 5.8.8-4.2 3.7 1 5.7L12 17.3Z" stroke="rgba(255,255,255,.85)" stroke-width="1.4" stroke-linejoin="round"/>
+          </svg>
+          المفضلة
+        </button>
+        <button class="tab-btn" id="tabRecent" type="button" data-tab="recent">
+          <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+            <path d="M12 8v5l3 2" stroke="rgba(255,255,255,.85)" stroke-width="1.6" stroke-linecap="round"/>
+            <path d="M21 12a9 9 0 1 1-2.64-6.36" stroke="rgba(255,255,255,.85)" stroke-width="1.6" stroke-linecap="round"/>
+          </svg>
+          الأخيرة
+        </button>
+      </div>
+    </div>
+
+    <div class="header-right">
+      <div class="pill" title="Connection">
+        <span class="dot" id="netDot"></span>
+        <span id="netText">...</span>
+      </div>
+      <div class="pill" title="Network Speed">
+        <span style="opacity:.9">Speed</span>
+        <strong id="speedText" style="color:rgba(234,240,255,.92)">--</strong>
+      </div>
+      <div class="pill" title="Quality">
+        <span style="opacity:.9">Quality</span>
+        <strong id="qText" style="color:rgba(234,240,255,.92)">Auto</strong>
+      </div>
+    </div>
+  </header>
+
+  <div class="main">
+    <div class="content">
+      <div class="player-wrap" id="playerWrap">
+        <video
+          id="video"
+          class="video"
+          playsinline
+          webkit-playsinline
+          preload="auto"
+          muted
+        ></video>
+
+        <div class="top-left-badges">
+          <div class="live-badge" title="LIVE">
+            <span class="live-dot" aria-hidden="true"></span>
+            LIVE
+          </div>
+          <div class="quality-badge" id="qualityBadge">Auto</div>
+        </div>
+
+        <!-- Loading overlay (avoid black screen) -->
+        <div class="loading show" id="loadingOverlay" aria-live="polite">
+          <div class="spinner" aria-hidden="true"></div>
+          <div class="title" id="loadingTitle">جاري التحميل...</div>
+          <div class="msg" id="loadingMsg">تحضير المشغل للبث المباشر</div>
+        </div>
+
+        <!-- Controls (Smarters-like minimal overlay) -->
+        <div class="controls" id="controls">
+          <div class="controls-left">
+            <button class="ctrl" id="btnPlay" type="button" title="Play/Pause" tabindex="0">
+              <svg id="iconPlay" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                <path d="M10 7.5v9l7-4.5-7-4.5Z" fill="rgba(255,255,255,.92)"/>
+              </svg>
+              <svg id="iconPause" viewBox="0 0 24 24" fill="none" aria-hidden="true" style="display:none">
+                <path d="M7.5 6.5h3.6v11H7.5v-11Zm5.4 0h3.6v11h-3.6v-11Z" fill="rgba(255,255,255,.92)"/>
+              </svg>
+            </button>
+
+            <button class="ctrl" id="btnMute" type="button" title="Mute" tabindex="0">
+              <svg id="iconVolOn" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                <path d="M4 10v4h3l4 3V7L7 10H4Z" fill="rgba(255,255,255,.92)"/>
+                <path d="M16 9c1.1 1.1 1.1 4.9 0 6" stroke="rgba(255,255,255,.92)" stroke-width="1.6" stroke-linecap="round"/>
+                <path d="M18.8 7c2.2 2.2 2.2 7.8 0 10" stroke="rgba(255,255,255,.70)" stroke-width="1.4" stroke-linecap="round"/>
+              </svg>
+              <svg id="iconVolOff" viewBox="0 0 24 24" fill="none" aria-hidden="true" style="display:none">
+                <path d="M4 10v4h3l4 3V7L7 10H4Z" fill="rgba(255,255,255,.92)"/>
+                <path d="M16 10l4 4M20 10l-4 4" stroke="rgba(255,255,255,.92)" stroke-width="1.6" stroke-linecap="round"/>
+              </svg>
+            </button>
+
+            <div class="vol" title="Volume">
+              <label for="volRange">VOL</label>
+              <input id="volRange" type="range" min="0" max="100" value="70" />
+              <span id="volVal" style="font-size:12px;color:rgba(234,240,255,.75); width:34px; text-align:left;">70%</span>
+            </div>
+          </div>
+
+          <div class="controls-right">
+            <div class="quality-menu">
+              <button class="ctrl" id="btnQuality" type="button" title="Quality" tabindex="0">
+                <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                  <path d="M5 7h14M5 12h10M5 17h6" stroke="rgba(255,255,255,.92)" stroke-width="1.6" stroke-linecap="round"/>
+                </svg>
+              </button>
+              <div class="menu" id="qualityMenu" role="menu" aria-label="Quality Menu"></div>
+            </div>
+
+            <button class="ctrl" id="btnPiP" type="button" title="Picture in Picture" tabindex="0">
+              <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                <path d="M5 6.5h14c.8 0 1.5.7 1.5 1.5v8c0 .8-.7 1.5-1.5 1.5H5c-.8 0-1.5-.7-1.5-1.5V8c0-.8.7-1.5 1.5-1.5Z" stroke="rgba(255,255,255,.88)" stroke-width="1.4"/>
+                <path d="M12.5 12.5h6v4.5h-6v-4.5Z" fill="rgba(255,255,255,.20)" stroke="rgba(255,255,255,.88)" stroke-width="1.2"/>
+              </svg>
+            </button>
+
+            <button class="ctrl" id="btnFull" type="button" title="Fullscreen" tabindex="0">
+              <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                <path d="M8 4H4v4M16 4h4v4M8 20H4v-4M16 20h4v-4" stroke="rgba(255,255,255,.92)" stroke-width="1.6" stroke-linecap="round"/>
+              </svg>
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <div class="info">
+        <div class="info-left">
+          <div class="info-logo" id="infoLogo"></div>
+          <div class="info-meta">
+            <div class="info-title" id="infoTitle">—</div>
+            <div class="info-sub" id="infoSub">—</div>
+          </div>
+        </div>
+
+        <div class="info-actions">
+          <button class="small-btn" id="btnFavToggle" type="button">إضافة للمفضلة</button>
+        </div>
+
+        <div class="stats" aria-label="Stats">
+          <div class="stat">Buffer <strong id="stBuffer">--</strong></div>
+          <div class="stat">Bitrate <strong id="stBitrate">--</strong></div>
+          <div class="stat">Res <strong id="stRes">--</strong></div>
+          <div class="stat">Type <strong id="stType">--</strong></div>
+        </div>
+      </div>
+    </div>
+
+    <aside>
+      <div class="sidebar-top">
+        <div class="count"><span id="chCount">0</span> قناة</div>
+        <button class="small-btn" id="btnReloadList" type="button">تحديث القائمة</button>
+      </div>
+      <div class="channel-list" id="channelList" tabindex="0" aria-label="Channel List"></div>
+    </aside>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+/**
+ * =========================================================
+ * Utilities
+ * =========================================================
+ */
+const $ = (sel, root=document) => root.querySelector(sel);
+
+function clamp(n, a, b){ return Math.max(a, Math.min(b, n)); }
+
+function fmtMbps(bitsPerSec){
+  if (!Number.isFinite(bitsPerSec) || bitsPerSec <= 0) return '--';
+  const mbps = bitsPerSec / 1e6;
+  return mbps >= 10 ? `${mbps.toFixed(1)} Mbps` : `${mbps.toFixed(2)} Mbps`;
+}
+function fmtKbps(bitsPerSec){
+  if (!Number.isFinite(bitsPerSec) || bitsPerSec <= 0) return '--';
+  const kbps = bitsPerSec / 1000;
+  return kbps >= 1000 ? `${(kbps/1000).toFixed(2)} Mbps` : `${kbps.toFixed(0)} kbps`;
+}
+function safeText(s){ return (s ?? '').toString().trim(); }
+
+function proxyUrl(u){
+  if (!u) return '';
+  // Avoid double-proxying
+  if (u.startsWith('/api/stream/proxy')) return u;
+  return `/api/stream/proxy?url=${encodeURIComponent(u)}`;
+}
+
+/**
+ * Resolve possibly-relative URLs against the original playlist URL.
+ * We must do it BEFORE proxying to keep correct base.
+ */
+function resolveAgainstBase(maybeRelativeUrl, baseUrl){
+  try{
+    // If already absolute, URL() will parse it fine
+    return new URL(maybeRelativeUrl, baseUrl).toString();
+  }catch{
+    return maybeRelativeUrl; // fallback
+  }
+}
+
+function isProbablyHls(url){
+  const u = (url||'').toLowerCase();
+  return u.includes('.m3u8') || u.includes('m3u8');
+}
+function isProbablyMpegTs(url){
+  const u = (url||'').toLowerCase();
+  return u.includes('.ts') || u.includes('mpegts') || u.includes('udp:') || u.includes('rtp:');
+}
+
+/**
+ * =========================================================
+ * StorageManager
+ * =========================================================
+ * حفظ: آخر قناة، الصوت، المفضلة، recent channels
+ */
+class StorageManager{
+  constructor(prefix='iptv_v2'){
+    this.prefix = prefix;
+  }
+  _k(key){ return `${this.prefix}:${key}`; }
+
+  getJSON(key, fallback){
+    try{
+      const raw = localStorage.getItem(this._k(key));
+      if (!raw) return fallback;
+      return JSON.parse(raw);
+    }catch{
+      return fallback;
+    }
+  }
+  setJSON(key, val){
+    try{ localStorage.setItem(this._k(key), JSON.stringify(val)); }catch{}
+  }
+  getStr(key, fallback=''){
+    try{
+      const raw = localStorage.getItem(this._k(key));
+      return raw ?? fallback;
+    }catch{ return fallback; }
+  }
+  setStr(key, val){
+    try{ localStorage.setItem(this._k(key), String(val)); }catch{}
+  }
+
+  getLastChannelId(){ return this.getStr('lastChannelId',''); }
+  setLastChannelId(id){ this.setStr('lastChannelId', id || ''); }
+
+  getVolume(){ return clamp(Number(this.getStr('volume','0.7')), 0, 1); }
+  setVolume(v){ this.setStr('volume', String(clamp(Number(v),0,1))); }
+
+  getMuted(){ return this.getStr('muted','0') === '1'; }
+  setMuted(m){ this.setStr('muted', m ? '1' : '0'); }
+
+  getFavorites(){ return new Set(this.getJSON('favorites', [])); }
+  setFavorites(set){ this.setJSON('favorites', Array.from(set)); }
+
+  getRecent(){ return this.getJSON('recent', []); }
+  setRecent(arr){ this.setJSON('recent', arr); }
+
+  pushRecent(channelId, limit=30){
+    if (!channelId) return;
+    const arr = this.getRecent().filter(x => x !== channelId);
+    arr.unshift(channelId);
+    this.setRecent(arr.slice(0, limit));
+  }
+}
+
+/**
+ * =========================================================
+ * ChannelManager
+ * =========================================================
+ * تحميل وتحليل M3U من /api/m3u/default
+ * يدعم: #EXTINF, tvg-name, tvg-logo, group-title
+ */
+class ChannelManager{
+  constructor(){
+    this.channels = [];
+    this.byId = new Map();
+  }
+
+  async loadDefaultM3U(){
+    const res = await fetch('/api/m3u/default', { cache:'no-store' });
+    if (!res.ok) throw new Error(`Failed to load M3U: ${res.status}`);
+    const text = await res.text();
+    this.channels = this.parseM3U(text);
+    this.byId.clear();
+    for (const ch of this.channels) this.byId.set(ch.id, ch);
+    return this.channels;
+  }
+
+  /**
+   * ملاحظة: M3U قد يأتي بأشكال مختلفة.
+   * نقرأ EXTINF ثم URL في السطر التالي.
+   */
+  parseM3U(text){
+    const lines = (text || '')
+      .replace(/\r/g,'')
+      .split('\n')
+      .map(l => l.trim())
+      .filter(l => l.length);
+
+    const out = [];
+    let pendingInf = null;
+
+    for (let i=0; i<lines.length; i++){
+      const line = lines[i];
+
+      if (line.startsWith('#EXTINF')){
+        pendingInf = this._parseExtInf(line);
+        continue;
+      }
+
+      // ignore comments except URL lines
+      if (line.startsWith('#')) continue;
+
+      // URL line
+      if (pendingInf){
+        const url = line;
+        const name = pendingInf.name || pendingInf.attrs['tvg-name'] || 'Channel';
+        const logo = pendingInf.attrs['tvg-logo'] || '';
+        const group = pendingInf.attrs['group-title'] || 'Other';
+
+        const id = this._makeId(name, url, group);
+
+        out.push({
+          id,
+          name,
+          url,
+          logo,
+          group,
+          tvgName: pendingInf.attrs['tvg-name'] || '',
+          rawAttrs: pendingInf.attrs
+        });
+
+        pendingInf = null;
+      }
+    }
+
+    // Stable sort: group then name
+    out.sort((a,b)=>{
+      const g = a.group.localeCompare(b.group, 'ar');
+      if (g !== 0) return g;
+      return a.name.localeCompare(b.name, 'ar');
+    });
+
+    return out;
+  }
+
+  _parseExtInf(extinfLine){
+    // Example:
+    // #EXTINF:-1 tvg-name="xxx" tvg-logo="..." group-title="News",Channel Name
+    const idxComma = extinfLine.indexOf(',');
+    const left = idxComma >= 0 ? extinfLine.slice(0, idxComma) : extinfLine;
+    const name = idxComma >= 0 ? extinfLine.slice(idxComma+1).trim() : '';
+
+    const attrs = {};
+    // Extract key="value" pairs
+    const re = /([\w-]+)="([^"]*)"/g;
+    let m;
+    while ((m = re.exec(left)) !== null){
+      attrs[m[1]] = m[2];
+    }
+
+    return { name, attrs };
+  }
+
+  _makeId(name, url, group){
+    // Deterministic ID to store in localStorage
+    const base = `${group}::${name}::${url}`;
+    let h = 2166136261;
+    for (let i=0; i<base.length; i++){
+      h ^= base.charCodeAt(i);
+      h = Math.imul(h, 16777619);
+    }
+    return `ch_${(h>>>0).toString(16)}`;
+  }
+
+  getById(id){ return this.byId.get(id) || null; }
+
+  filter({query='', tab='all', favoritesSet=new Set(), recentIds=[]}){
+    const q = safeText(query).toLowerCase();
+
+    let list = this.channels;
+
+    if (tab === 'fav'){
+      list = list.filter(ch => favoritesSet.has(ch.id));
+    } else if (tab === 'recent'){
+      // preserve recent order
+      const map = new Map(list.map(ch => [ch.id, ch]));
+      list = recentIds.map(id => map.get(id)).filter(Boolean);
+    }
+
+    if (q){
+      list = list.filter(ch => {
+        const n = (ch.name||'').toLowerCase();
+        const g = (ch.group||'').toLowerCase();
+        return n.includes(q) || g.includes(q);
+      });
+    }
+
+    return list;
+  }
+}
+
+/**
+ * =========================================================
+ * UIManager
+ * =========================================================
+ * مسؤول عن التحديثات البصرية + rendering القنوات + الإحصائيات
+ */
+class UIManager{
+  constructor(){
+    // Header indicators
+    this.netDot = $('#netDot');
+    this.netText = $('#netText');
+    this.speedText = $('#speedText');
+    this.qText = $('#qText');
+
+    // Search + tabs
+    this.searchInput = $('#searchInput');
+    this.tabAll = $('#tabAll');
+    this.tabFav = $('#tabFav');
+    this.tabRecent = $('#tabRecent');
+
+    // Channel list
+    this.channelList = $('#channelList');
+    this.chCount = $('#chCount');
+    this.btnReloadList = $('#btnReloadList');
+
+    // Player UI
+    this.loadingOverlay = $('#loadingOverlay');
+    this.loadingTitle = $('#loadingTitle');
+    this.loadingMsg = $('#loadingMsg');
+
+    this.btnPlay = $('#btnPlay');
+    this.iconPlay = $('#iconPlay');
+    this.iconPause = $('#iconPause');
+
+    this.btnMute = $('#btnMute');
+    this.iconVolOn = $('#iconVolOn');
+    this.iconVolOff = $('#iconVolOff');
+
+    this.volRange = $('#volRange');
+    this.volVal = $('#volVal');
+
+    this.btnFull = $('#btnFull');
+    this.btnPiP = $('#btnPiP');
+
+    this.qualityBadge = $('#qualityBadge');
+    this.btnQuality = $('#btnQuality');
+    this.qualityMenu = $('#qualityMenu');
+
+    // Bottom info
+    this.infoLogo = $('#infoLogo');
+    this.infoTitle = $('#infoTitle');
+    this.infoSub = $('#infoSub');
+    this.btnFavToggle = $('#btnFavToggle');
+
+    // Stats
+    this.stBuffer = $('#stBuffer');
+    this.stBitrate = $('#stBitrate');
+    this.stRes = $('#stRes');
+    this.stType = $('#stType');
+
+    // Toast container
+    this.toast = $('#toast');
+
+    // State
+    this.currentTab = 'all';
+    this.currentQuery = '';
+    this.activeChannelId = '';
+    this._onChannelClick = null;
+    this._onFavClick = null;
+
+    // For list navigation (TV remotes)
+    this._focusedIndex = 0;
+    this._currentRenderedIds = [];
+  }
+
+  setHandlers({
+    onSearch,
+    onTabChange,
+    onChannelSelect,
+    onToggleFavorite,
+    onReloadList,
+    onTogglePlay,
+    onToggleMute,
+    onVolumeChange,
+    onFullscreen,
+    onPiP,
+    onQualityMenuToggle,
+    onQualitySelect,
+    onFavToggleBottom
+  }){
+    // Search: live filter while typing
+    this.searchInput.addEventListener('input', () => {
+      this.currentQuery = this.searchInput.value;
+      onSearch?.(this.currentQuery);
+    });
+
+    const setTabActive = (tab) => {
+      this.currentTab = tab;
+      for (const b of [this.tabAll, this.tabFav, this.tabRecent]){
+        b.classList.toggle('active', b.dataset.tab === tab);
+      }
+      onTabChange?.(tab);
+    };
+
+    this.tabAll.addEventListener('click', ()=> setTabActive('all'));
+    this.tabFav.addEventListener('click', ()=> setTabActive('fav'));
+    this.tabRecent.addEventListener('click', ()=> setTabActive('recent'));
+
+    this.btnReloadList.addEventListener('click', ()=> onReloadList?.());
+
+    // Player controls
+    this.btnPlay.addEventListener('click', ()=> onTogglePlay?.());
+    this.btnMute.addEventListener('click', ()=> onToggleMute?.());
+
+    this.volRange.addEventListener('input', ()=> {
+      const v = clamp(Number(this.volRange.value)/100, 0, 1);
+      this.volVal.textContent = `${Math.round(v*100)}%`;
+      onVolumeChange?.(v);
+    });
+
+    this.btnFull.addEventListener('click', ()=> onFullscreen?.());
+    this.btnPiP.addEventListener('click', ()=> onPiP?.());
+
+    // Quality menu
+    this.btnQuality.addEventListener('click', ()=> onQualityMenuToggle?.());
+    document.addEventListener('click', (e)=>{
+      // Close menu if clicked outside
+      if (!this.qualityMenu.classList.contains('show')) return;
+      const inside = this.qualityMenu.contains(e.target) || this.btnQuality.contains(e.target);
+      if (!inside) this.hideQualityMenu();
+    }, { passive:true });
+
+    this._onChannelClick = onChannelSelect;
+    this._onFavClick = onToggleFavorite;
+
+    // Bottom favorite toggle
+    this.btnFavToggle.addEventListener('click', ()=> onFavToggleBottom?.());
+
+    // Remote/keyboard navigation for channel list
+    this.channelList.addEventListener('keydown', (e)=>{
+      if (!this._currentRenderedIds.length) return;
+      if (e.key === 'ArrowDown'){
+        e.preventDefault();
+        this._focusedIndex = clamp(this._focusedIndex + 1, 0, this._currentRenderedIds.length - 1);
+        this.focusChannelByIndex(this._focusedIndex);
+      } else if (e.key === 'ArrowUp'){
+        e.preventDefault();
+        this._focusedIndex = clamp(this._focusedIndex - 1, 0, this._currentRenderedIds.length - 1);
+        this.focusChannelByIndex(this._focusedIndex);
+      } else if (e.key === 'Enter'){
+        e.preventDefault();
+        const id = this._currentRenderedIds[this._focusedIndex];
+        if (id) this._onChannelClick?.(id);
+      }
+    });
+
+    // Quality select delegated
+    this.qualityMenu.addEventListener('click', (e)=>{
+      const btn = e.target.closest('[data-level]');
+      if (!btn) return;
+      const level = Number(btn.dataset.level);
+      onQualitySelect?.(level);
+      this.hideQualityMenu();
+    });
+  }
+
+  showLoading(title, msg){
+    this.loadingTitle.textContent = title || 'جاري التحميل...';
+    this.loadingMsg.textContent = msg || '...';
+    this.loadingOverlay.classList.add('show');
+  }
+  hideLoading(){
+    this.loadingOverlay.classList.remove('show');
+  }
+
+  setPlayState(isPlaying){
+    this.iconPlay.style.display = isPlaying ? 'none' : '';
+    this.iconPause.style.display = isPlaying ? '' : 'none';
+  }
+  setMuteState(muted){
+    this.iconVolOn.style.display = muted ? 'none' : '';
+    this.iconVolOff.style.display = muted ? '' : 'none';
+  }
+  setVolumeUI(v){
+    const vv = clamp(Number(v), 0, 1);
+    this.volRange.value = String(Math.round(vv*100));
+    this.volVal.textContent = `${Math.round(vv*100)}%`;
+  }
+
+  setNetworkState({online, text}){
+    this.netDot.classList.toggle('online', !!online);
+    this.netDot.classList.toggle('offline', !online);
+    this.netText.textContent = text || (online ? 'Online' : 'Offline');
+  }
+  setSpeedText(t){ this.speedText.textContent = t || '--'; }
+
+  setQualityText(t){
+    const v = t || 'Auto';
+    this.qText.textContent = v;
+    this.qualityBadge.textContent = v;
+  }
+
+  setStats({bufferText, bitrateText, resText, typeText}){
+    this.stBuffer.textContent = bufferText || '--';
+    this.stBitrate.textContent = bitrateText || '--';
+    this.stRes.textContent = resText || '--';
+    this.stType.textContent = typeText || '--';
+  }
+
+  toastMsg(msg, type='ok', ttl=2600){
+    const el = document.createElement('div');
+    el.className = `t ${type}`;
+    el.textContent = msg;
+    this.toast.appendChild(el);
+    setTimeout(()=> {
+      el.style.opacity = '0';
+      el.style.transition = 'opacity .2s ease';
+      setTimeout(()=> el.remove(), 240);
+    }, ttl);
+  }
+
+  renderInfo(channel, isFav){
+    if (!channel){
+      this.infoLogo.innerHTML = '';
+      this.infoTitle.textContent = '—';
+      this.infoSub.textContent = '—';
+      this.btnFavToggle.textContent = 'إضافة للمفضلة';
+      return;
+    }
+    this.infoTitle.textContent = channel.name || '—';
+    this.infoSub.textContent = channel.group ? `المجموعة: ${channel.group}` : '—';
+    this.infoLogo.innerHTML = this._logoHTML(channel.logo, channel.name, 44);
+    this.btnFavToggle.textContent = isFav ? 'إزالة من المفضلة' : 'إضافة للمفضلة';
+  }
+
+  _logoHTML(logoUrl, name, size=44){
+    const safeName = safeText(name) || 'C';
+    const letter = safeName[0]?.toUpperCase() || 'C';
+    if (logoUrl){
+      const u = logoUrl; // logo often already public
+      return `<img src="${u}" alt="${safeName}" loading="lazy" decoding="async"
+              onerror="this.remove(); this.parentElement.innerHTML='<div class=\\'ph\\'>${letter}</div>';">`;
+    }
+    return `<div class="ph">${letter}</div>`;
+  }
+
+  /**
+   * Render channel list (grouped) efficiently.
+   */
+  renderChannelList(list, favoritesSet, activeId){
+    this.activeChannelId = activeId || '';
+    this.chCount.textContent = String(list.length);
+
+    const frag = document.createDocumentFragment();
+    let lastGroup = null;
+
+    this._currentRenderedIds = [];
+    this._focusedIndex = 0;
+
+    for (const ch of list){
+      if (ch.group !== lastGroup){
+        lastGroup = ch.group;
+        const sep = document.createElement('div');
+        sep.className = 'group-sep';
+        sep.textContent = ch.group || 'Other';
+        frag.appendChild(sep);
+      }
+
+      const item = document.createElement('div');
+      item.className = 'ch-item' + (ch.id === this.activeChannelId ? ' active' : '');
+      item.tabIndex = 0;
+      item.dataset.id = ch.id;
+
+      const logo = document.createElement('div');
+      logo.className = 'logo';
+      logo.innerHTML = this._logoHTML(ch.logo, ch.name, 44);
+
+      const meta = document.createElement('div');
+      meta.className = 'ch-meta';
+      meta.innerHTML = `
+        <div class="ch-name">${escapeHtml(ch.name || '')}</div>
+        <div class="ch-group">${escapeHtml(ch.group || '')}</div>
+      `;
+
+      const actions = document.createElement('div');
+      actions.className = 'ch-actions';
+
+      const fav = document.createElement('button');
+      fav.type = 'button';
+      fav.className = 'fav' + (favoritesSet.has(ch.id) ? ' on' : '');
+      fav.title = favoritesSet.has(ch.id) ? 'Remove Favorite' : 'Add Favorite';
+      fav.innerHTML = `
+        <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+          <path d="M12 17.3 6.8 20l1-5.7L3.6 10.6l5.8-.8L12 4.5l2.6 5.3 5.8.8-4.2 3.7 1 5.7L12 17.3Z"
+            fill="${favoritesSet.has(ch.id) ? 'rgba(255,202,58,.85)' : 'rgba(255,255,255,.14)'}"
+            stroke="rgba(255,255,255,.75)" stroke-width="1.1" stroke-linejoin="round"/>
+        </svg>
+      `;
+
+      actions.appendChild(fav);
+
+      item.appendChild(logo);
+      item.appendChild(meta);
+      item.appendChild(actions);
+
+      // Events
+      item.addEventListener('click', (e)=>{
+        // If user clicked fav button, do not trigger channel select
+        if (e.target.closest('.fav')) return;
+        this._onChannelClick?.(ch.id);
+      }, { passive:true });
+
+      item.addEventListener('dblclick', ()=> this._onChannelClick?.(ch.id), { passive:true });
+
+      fav.addEventListener('click', (e)=>{
+        e.stopPropagation();
+        this._onFavClick?.(ch.id);
+      });
+
+      frag.appendChild(item);
+      this._currentRenderedIds.push(ch.id);
+    }
+
+    // Replace list content
+    this.channelList.innerHTML = '';
+    this.channelList.appendChild(frag);
+
+    // Try to focus active channel for TV UX
+    const activeEl = this.channelList.querySelector(`.ch-item[data-id="${CSS.escape(this.activeChannelId)}"]`);
+    if (activeEl){
+      activeEl.scrollIntoView({ block:'center' });
+    }
+  }
+
+  setActiveChannel(id){
+    this.activeChannelId = id || '';
+    const prev = this.channelList.querySelector('.ch-item.active');
+    if (prev) prev.classList.remove('active');
+
+    const el = this.channelList.querySelector(`.ch-item[data-id="${CSS.escape(this.activeChannelId)}"]`);
+    if (el){
+      el.classList.add('active');
+      el.scrollIntoView({ block:'nearest' });
+    }
+  }
+
+  focusChannelByIndex(idx){
+    const id = this._currentRenderedIds[idx];
+    if (!id) return;
+    const el = this.channelList.querySelector(`.ch-item[data-id="${CSS.escape(id)}"]`);
+    if (el){
+      el.focus({ preventScroll:true });
+      el.scrollIntoView({ block:'nearest' });
+    }
+  }
+
+  showQualityMenu(levels, currentLevel, autoEnabled){
+    // levels: [{levelIndex, label, bitrate, height}]
+    this.qualityMenu.innerHTML = '';
+    const frag = document.createDocumentFragment();
+
+    // Auto
+    frag.appendChild(this._qualityItem(-1, 'Auto', autoEnabled, 'ABR'));
+
+    for (const lv of levels){
+      const isActive = (!autoEnabled && lv.levelIndex === currentLevel);
+      const tag = lv.height ? `${lv.height}p` : (lv.bitrate ? fmtKbps(lv.bitrate) : '');
+      frag.appendChild(this._qualityItem(lv.levelIndex, lv.height ? `${lv.height}p` : `Level ${lv.levelIndex}`, isActive, tag));
+    }
+
+    this.qualityMenu.appendChild(frag);
+    this.qualityMenu.classList.add('show');
+  }
+
+  _qualityItem(level, text, active, tag){
+    const el = document.createElement('div');
+    el.className = 'mi' + (active ? ' active' : '');
+    el.dataset.level = String(level);
+    el.setAttribute('role','menuitem');
+    el.innerHTML = `<span>${escapeHtml(text)}</span><span class="tag">${escapeHtml(tag||'')}</span>`;
+    return el;
+  }
+
+  hideQualityMenu(){
+    this.qualityMenu.classList.remove('show');
+  }
+}
+
+// Basic HTML escape for list rendering
+function escapeHtml(str){
+  return String(str ?? '').replace(/[&<>"']/g, (c)=>({
+    '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'
+  }[c]));
+}
+
+/**
+ * =========================================================
+ * NetworkMonitor
+ * =========================================================
+ * - online/offline
+ * - speed indicator (Network Information API or player estimates)
+ */
+class NetworkMonitor{
+  constructor(ui, playerManager){
+    this.ui = ui;
+    this.playerManager = playerManager;
+
+    this._online = navigator.onLine;
+    this._timer = null;
+
+    this._onOnline = () => {
+      this._online = true;
+      this.ui.setNetworkState({ online:true, text:'Online' });
+      // Auto-resume if needed
+      this.playerManager?.handleInternetRestored();
+    };
+    this._onOffline = () => {
+      this._online = false;
+      this.ui.setNetworkState({ online:false, text:'Offline' });
+      this.ui.toastMsg('انقطع الإنترنت. سيتم إعادة التشغيل تلقائياً عند عودته.', 'warn', 3200);
+    };
+  }
+
+  start(){
+    window.addEventListener('online', this._onOnline);
+    window.addEventListener('offline', this._onOffline);
+
+    this.ui.setNetworkState({ online: navigator.onLine, text: navigator.onLine ? 'Online' : 'Offline' });
+
+    // Update speed text periodically
+    this._timer = setInterval(()=> this._tick(), 1000);
+    this._tick();
+  }
+
+  stop(){
+    window.removeEventListener('online', this._onOnline);
+    window.removeEventListener('offline', this._onOffline);
+    if (this._timer) clearInterval(this._timer);
+    this._timer = null;
+  }
+
+  _tick(){
+    // Priority: player estimate -> navigator.connection
+    const estBits = this.playerManager?.getBandwidthEstimateBits() || 0;
+
+    const navConn = navigator.connection || navigator.mozConnection || navigator.webkitConnection;
+    const downlinkMbps = navConn && Number.isFinite(navConn.downlink) ? navConn.downlink : 0;
+    const navBits = downlinkMbps > 0 ? downlinkMbps * 1e6 : 0;
+
+    const bits = estBits || navBits;
+    this.ui.setSpeedText(bits ? fmtMbps(bits) : '--');
+
+    // Online state text
+    const online = navigator.onLine;
+    this.ui.setNetworkState({ online, text: online ? 'Online' : 'Offline' });
+  }
+
+  isOnline(){ return navigator.onLine; }
+}
+
+/**
+ * =========================================================
+ * ConnectionMonitor
+ * =========================================================
+ * مراقبة التجمّد/الstall/waiting + تنفيذ خطة إصلاح مشابهة لـ Smarters
+ *
+ * Rules:
+ *  - 10s  => attempt HLS recover / light repair
+ *  - 20s  => reload playlist
+ *  - 30s  => destroy + recreate player
+ *  - 60s  => reload channel
+ */
+class ConnectionMonitor{
+  constructor(ui, playerManager){
+    this.ui = ui;
+    this.pm = playerManager;
+
+    this._timer = null;
+    this._lastTime = 0;
+    this._stallSec = 0;
+    this._stage = 0;
+
+    this._onVideoWaiting = () => this._markStall('waiting');
+    this._onVideoStalled = () => this._markStall('stalled');
+    this._onVideoError = () => this._markStall('video_error');
+    this._onVideoPlaying = () => this._clearStall('playing');
+    this._onTimeUpdate = () => {}; // tracked in tick
+  }
+
+  attach(video){
+    if (!video) return;
+    this.detach(video);
+    video.addEventListener('waiting', this._onVideoWaiting, { passive:true });
+    video.addEventListener('stalled', this._onVideoStalled, { passive:true });
+    video.addEventListener('error', this._onVideoError, { passive:true });
+    video.addEventListener('playing', this._onVideoPlaying, { passive:true });
+    video.addEventListener('timeupdate', this._onTimeUpdate, { passive:true });
+  }
+
+  detach(video){
+    if (!video) return;
+    video.removeEventListener('waiting', this._onVideoWaiting);
+    video.removeEventListener('stalled', this._onVideoStalled);
+    video.removeEventListener('error', this._onVideoError);
+    video.removeEventListener('playing', this._onVideoPlaying);
+    video.removeEventListener('timeupdate', this._onTimeUpdate);
+  }
+
+  start(){
+    this.stop();
+    this._stallSec = 0;
+    this._stage = 0;
+    this._lastTime = this.pm?.video?.currentTime || 0;
+    this._timer = setInterval(()=> this._tick(), 1000);
+  }
+
+  stop(){
+    if (this._timer) clearInterval(this._timer);
+    this._timer = null;
+  }
+
+  reset(){
+    this._stallSec = 0;
+    this._stage = 0;
+    this._lastTime = this.pm?.video?.currentTime || 0;
+  }
+
+  _markStall(reason){
+    // Don't spam toasts; let tick handle staged repairs
+    // But we keep track: stallSec increments in tick.
+  }
+
+  _clearStall(reason){
+    this._stallSec = 0;
+    this._stage = 0;
+    this._lastTime = this.pm?.video?.currentTime || 0;
+  }
+
+  async _tick(){
+    const pm = this.pm;
+    const video = pm?.video;
+    if (!pm || !video) return;
+
+    // If user paused, do not run reconnection logic
+    if (video.paused){
+      this._stallSec = 0;
+      this._stage = 0;
+      this._lastTime = video.currentTime || 0;
+      return;
+    }
+
+    // If offline, wait (we will auto recover on online)
+    if (!navigator.onLine){
+      this._stallSec = 0;
+      this._stage = 0;
+      this._lastTime = video.currentTime || 0;
+      return;
+    }
+
+    const t = video.currentTime || 0;
+    const progressed = (t - this._lastTime) > 0.03;
+
+    // Also consider buffer: if near empty, likely stall
+    const bufSec = pm.getBufferedSeconds();
+    const isLikelyStalled = !progressed && (video.readyState < 3 || bufSec < 0.25);
+
+    if (isLikelyStalled){
+      this._stallSec++;
+    } else {
+      // healthy
+      this._stallSec = 0;
+      this._stage = 0;
+      this._lastTime = t;
+      return;
+    }
+
+    // staged repair actions
+    if (this._stallSec >= 10 && this._stage < 1){
+      this._stage = 1;
+      this.ui.toastMsg('تجمّد البث: محاولة إصلاح سريعة...', 'warn', 2200);
+      this.ui.showLoading('جاري الإصلاح...', 'محاولة Recovery (10s)');
+      await pm.repairStage(1);
+      return;
+    }
+
+    if (this._stallSec >= 20 && this._stage < 2){
+      this._stage = 2;
+      this.ui.toastMsg('تجمّد مستمر: إعادة تحميل الـ Playlist...', 'warn', 2200);
+      this.ui.showLoading('جاري الإصلاح...', 'Reload Playlist (20s)');
+      await pm.repairStage(2);
+      return;
+    }
+
+    if (this._stallSec >= 30 && this._stage < 3){
+      this._stage = 3;
+      this.ui.toastMsg('تجمّد قوي: إعادة إنشاء المشغل...', 'warn', 2200);
+      this.ui.showLoading('جاري الإصلاح...', 'Recreate Player (30s)');
+      await pm.repairStage(3);
+      return;
+    }
+
+    if (this._stallSec >= 60 && this._stage < 4){
+      this._stage = 4;
+      this.ui.toastMsg('تجمّد طويل: إعادة تحميل القناة...', 'bad', 2600);
+      this.ui.showLoading('جاري الإصلاح...', 'Reload Channel (60s)');
+      await pm.repairStage(4);
+      return;
+    }
+  }
+}
+
+/**
+ * =========================================================
+ * PlayerManager
+ * =========================================================
+ * - يدعم HLS + MPEGTS + Auto Detect
+ * - Destroy HLS & MPEGTS عند تغيير القناة (منع تسرب الذاكرة)
+ * - Reconnect / recover مشابه لـ IPTV Smarters
+ */
+class PlayerManager{
+  constructor(video, ui, storage){
+    this.video = video;
+    this.ui = ui;
+    this.storage = storage;
+
+    this.hls = null;
+    this.ts = null;
+
+    this.currentChannel = null;
+    this.currentType = '—'; // hls/mpegts
+    this._qualityLevels = [];
+    this._lastBandwidthBits = 0;
+
+    this._hlsEventsBound = false;
+
+    // Timers / loops
+    this._statsTimer = null;
+
+    // Bind video events
+    this._onPlay = () => this.ui.setPlayState(true);
+    this._onPause = () => this.ui.setPlayState(false);
+    this._onVolumeChange = () => {
+      this.storage.setVolume(this.video.volume);
+      this.storage.setMuted(this.video.muted);
+      this.ui.setVolumeUI(this.video.volume);
+      this.ui.setMuteState(this.video.muted);
+    };
+    this._onCanPlay = () => {
+      // keep overlay until "playing" to avoid black screen
+    };
+    this._onPlaying = () => {
+      this.ui.hideLoading();
+      this.ui.setPlayState(true);
+    };
+    this._onError = () => {
+      // Surface minimal info; ConnectionMonitor will repair
+      this.ui.toastMsg('خطأ في الفيديو. سيتم محاولة الإصلاح تلقائياً.', 'bad', 2800);
+    };
+
+    this.video.addEventListener('play', this._onPlay, { passive:true });
+    this.video.addEventListener('pause', this._onPause, { passive:true });
+    this.video.addEventListener('volumechange', this._onVolumeChange, { passive:true });
+    this.video.addEventListener('canplay', this._onCanPlay, { passive:true });
+    this.video.addEventListener('playing', this._onPlaying, { passive:true });
+    this.video.addEventListener('error', this._onError, { passive:true });
+  }
+
+  /**
+   * Auto detect stream type using /api/stream/probe (must not change endpoint).
+   * Fallback to heuristics.
+   */
+  async probeType(originalUrl){
+    const u = originalUrl;
+    try{
+      const res = await fetch(`/api/stream/probe?url=${encodeURIComponent(u)}`, { cache:'no-store' });
+      if (res.ok){
+        const data = await res.json().catch(()=>null);
+        const t = (data?.type || data?.stream_type || data?.format || '').toString().toLowerCase();
+        if (t.includes('hls') || t.includes('m3u8')) return 'hls';
+        if (t.includes('mpegts') || t.includes('ts')) return 'mpegts';
+      }
+    }catch{}
+    // Heuristic fallback
+    if (isProbablyHls(u)) return 'hls';
+    if (isProbablyMpegTs(u)) return 'mpegts';
+    // Default to HLS (most common for IPTV)
+    return 'hls';
+  }
+
+  /**
+   * Create a per-channel HLS Loader class that proxies every request via /api/stream/proxy
+   * while keeping Hls.js source URL = original (to resolve relative URLs correctly).
+   */
+  _createProxyLoaderClass(basePlaylistUrl){
+    const BaseLoader = Hls.DefaultConfig.loader;
+    const base = basePlaylistUrl;
+
+    return class ProxyLoader extends BaseLoader{
+      constructor(config){ super(config); }
+      load(context, config, callbacks){
+        try{
+          // Resolve relative -> absolute against the ORIGINAL playlist URL
+          const abs = resolveAgainstBase(context.url, base);
+          // Proxy everything (manifest, level, fragments, keys)
+          context.url = proxyUrl(abs);
+        }catch{}
+        return super.load(context, config, callbacks);
+      }
+    }
+  }
+
+  _bestHlsConfig(basePlaylistUrl){
+    const ProxyLoader = this._createProxyLoaderClass(basePlaylistUrl);
+
+    return {
+      // Low latency live tuning
+      lowLatencyMode: true,
+      backBufferLength: 30,
+
+      // Smart buffer (not huge, good for Android/TV)
+      maxBufferLength: 30,
+      maxMaxBufferLength: 60,
+      maxBufferSize: 30 * 1000 * 1000,
+      maxBufferHole: 0.5,
+
+      // Live sync (reduce latency without over-speed)
+      liveSyncDurationCount: 2,
+      liveMaxLatencyDurationCount: 4,
+      maxLiveSyncPlaybackRate: 1.35,
+
+      // ABR
+      startLevel: -1,
+      capLevelToPlayerSize: true,
+      abrEwmaFastLive: 3,
+      abrEwmaSlowLive: 9,
+      abrMaxWithRealBitrate: true,
+
+      // Reliability
+      enableWorker: true,
+      enableSoftwareAES: true,
+
+      // Retry strategy (live)
+      manifestLoadingMaxRetry: 6,
+      manifestLoadingRetryDelay: 500,
+      manifestLoadingMaxRetryTimeout: 8000,
+
+      levelLoadingMaxRetry: 6,
+      levelLoadingRetryDelay: 500,
+      levelLoadingMaxRetryTimeout: 8000,
+
+      fragLoadingMaxRetry: 6,
+      fragLoadingRetryDelay: 500,
+      fragLoadingMaxRetryTimeout: 9000,
+
+      // Use our proxy loader
+      loader: ProxyLoader
+    };
+  }
+
+  /**
+   * Destroy existing players and clear timers to avoid memory leaks.
+   * Must be called on every channel change.
+   */
+  destroyPlayers(){
+    // Stop stats loop
+    if (this._statsTimer) clearInterval(this._statsTimer);
+    this._statsTimer = null;
+
+    // HLS destroy
+    if (this.hls){
+      try{
+        this.hls.stopLoad();
+        this.hls.detachMedia();
+        this.hls.destroy();
+      }catch{}
+      this.hls = null;
+      this._hlsEventsBound = false;
+    }
+
+    // MPEGTS destroy
+    if (this.ts){
+      try{
+        this.ts.pause();
+        this.ts.unload();
+        this.ts.detachMediaElement();
+        this.ts.destroy();
+      }catch{}
+      this.ts = null;
+    }
+
+    // Release video element
+    try{
+      this.video.pause();
+      this.video.removeAttribute('src');
+      this.video.load();
+    }catch{}
+    this._qualityLevels = [];
+    this._lastBandwidthBits = 0;
+  }
+
+  getBandwidthEstimateBits(){
+    // HLS bandwidth estimate is generally best
+    if (this.hls && Number.isFinite(this.hls.bandwidthEstimate) && this.hls.bandwidthEstimate > 0){
+      return this.hls.bandwidthEstimate;
+    }
+    // mpegts.js statistics (if available)
+    if (this.ts && typeof this.ts.getStatisticsInfo === 'function'){
+      try{
+        const s = this.ts.getStatisticsInfo();
+        // mpegts.js speed often in KB/s
+        const speedKBps = Number(s?.speed || 0);
+        if (speedKBps > 0) return speedKBps * 1024 * 8;
+      }catch{}
+    }
+    return this._lastBandwidthBits || 0;
+  }
+
+  getBufferedSeconds(){
+    const v = this.video;
+    try{
+      if (!v || !v.buffered || v.buffered.length === 0) return 0;
+      const t = v.currentTime || 0;
+      // Find buffered range that contains currentTime
+      for (let i=0; i<v.buffered.length; i++){
+        const start = v.buffered.start(i);
+        const end = v.buffered.end(i);
+        if (t >= start && t <= end){
+          return Math.max(0, end - t);
+        }
+      }
+      // else: use last range end - current
+      const end = v.buffered.end(v.buffered.length - 1);
+      return Math.max(0, end - t);
+    }catch{
+      return 0;
+    }
+  }
+
+  _computeBufferText(){
+    const sec = this.getBufferedSeconds();
+    const target = 15; // reference (live)
+    const pct = clamp((sec/target)*100, 0, 100);
+    return `${pct.toFixed(0)}% (${sec.toFixed(1)}s)`;
+  }
+
+  _computeResolutionText(){
+    const w = this.video.videoWidth || 0;
+    const h = this.video.videoHeight || 0;
+    if (!w || !h) return '--';
+    return `${w}x${h}`;
+  }
+
+  _updateStatsUI(){
+    const bufferText = this._computeBufferText();
+
+    // bitrate: show current level bitrate or estimated
+    let bitrateBits = 0;
+    let typeText = this.currentType || '--';
+
+    if (this.hls){
+      const level = this.hls.currentLevel;
+      const auto = this.hls.autoLevelEnabled;
+      if (!auto && level >= 0 && this.hls.levels?.[level]){
+        bitrateBits = this.hls.levels[level].bitrate || 0;
+      }
+      // prefer estimate if bitrate not known
+      bitrateBits = bitrateBits || this.hls.bandwidthEstimate || 0;
+      typeText = 'HLS';
+    } else if (this.ts){
+      bitrateBits = this.getBandwidthEstimateBits();
+      typeText = 'MPEGTS';
+    }
+
+    const bitrateText = bitrateBits ? fmtKbps(bitrateBits) : '--';
+    const resText = this._computeResolutionText();
+
+    this.ui.setStats({ bufferText, bitrateText, resText, typeText });
+  }
+
+  _bindHlsEvents(){
+    if (!this.hls || this._hlsEventsBound) return;
+    this._hlsEventsBound = true;
+
+    // Update quality list when manifest parsed
+    this.hls.on(Hls.Events.MANIFEST_PARSED, (_, data)=>{
+      this._qualityLevels = (this.hls.levels || []).map((l, idx)=>({
+        levelIndex: idx,
+        height: l.height || 0,
+        bitrate: l.bitrate || 0
+      })).sort((a,b)=> (b.height||0) - (a.height||0));
+
+      // Update quality badge (Auto or level)
+      this._syncQualityText();
+    });
+
+    this.hls.on(Hls.Events.LEVEL_SWITCHED, (_, data)=>{
+      this._syncQualityText();
+    });
+
+    // Collect bandwidth estimate
+    this.hls.on(Hls.Events.FRAG_LOADED, (_, data)=>{
+      // bandwidthEstimate is internal; we keep reading it
+      const be = this.hls.bandwidthEstimate || 0;
+      if (be > 0) this._lastBandwidthBits = be;
+    });
+
+    // Critical: robust error handling similar to Smarters
+    this.hls.on(Hls.Events.ERROR, async (_, data)=>{
+      if (!data) return;
+
+      // Track for debug in UI (not too verbose)
+      const detail = data.details || '';
+      const fatal = !!data.fatal;
+      const type = data.type || '';
+
+      // Non-fatal: let it recover naturally, but keep overlay if stuck
+      if (!fatal){
+        // common transient: FRAG_LOAD_ERROR, LEVEL_LOAD_ERROR etc.
+        if (detail === Hls.ErrorDetails.FRAG_LOAD_ERROR ||
+            detail === Hls.ErrorDetails.LEVEL_LOAD_ERROR ||
+            detail === Hls.ErrorDetails.MANIFEST_LOAD_ERROR){
+          // keep quiet; monitor will trigger staged repairs if freeze continues
+        }
+        return;
+      }
+
+      // Fatal cases:
+      if (type === Hls.ErrorTypes.NETWORK_ERROR){
+        // NETWORK_ERROR -> try restart loading
+        this.ui.toastMsg('NETWORK_ERROR: إعادة محاولة التحميل...', 'warn', 2200);
+        try{ this.hls.startLoad(-1); }catch{}
+        return;
+      }
+
+      if (type === Hls.ErrorTypes.MEDIA_ERROR){
+        this.ui.toastMsg('MEDIA_ERROR: محاولة recoverMediaError...', 'warn', 2400);
+        try{ this.hls.recoverMediaError(); }catch{}
+        return;
+      }
+
+      // Others: recreate player
+      this.ui.toastMsg('خطأ قاتل: إعادة إنشاء المشغل...', 'bad', 2600);
+      await this.repairStage(3);
+    });
+  }
+
+  _syncQualityText(){
+    if (!this.hls){
+      this.ui.setQualityText('—');
+      return;
+    }
+    const auto = this.hls.autoLevelEnabled;
+    if (auto){
+      // show current auto level height if known
+      const l = this.hls.levels?.[this.hls.currentLevel];
+      const txt = l?.height ? `Auto (${l.height}p)` : 'Auto';
+      this.ui.setQualityText(txt);
+      return;
+    }
+    const level = this.hls.currentLevel;
+    const lv = this.hls.levels?.[level];
+    if (lv?.height) this.ui.setQualityText(`${lv.height}p`);
+    else this.ui.setQualityText(`L${level}`);
+  }
+
+  async playChannel(channel){
+    if (!channel) return;
+
+    // Clear everything first (no leaks)
+    this.ui.showLoading('جاري فتح القناة...', 'تهيئة المشغل وإعادة الاتصال بالبث');
+    this.destroyPlayers();
+
+    this.currentChannel = channel;
+    this.storage.setLastChannelId(channel.id);
+
+    // Autoplay friendly: restore volume/mute, but keep muted until play starts to avoid autoplay issues
+    const vol = this.storage.getVolume();
+    const muted = this.storage.getMuted();
+    this.video.volume = vol;
+    this.video.muted = muted; // keep user preference
+    this.ui.setVolumeUI(vol);
+    this.ui.setMuteState(muted);
+
+    // Detect type via probe endpoint (no server changes)
+    const type = await this.probeType(channel.url);
+    this.currentType = type;
+
+    try{
+      if (type === 'mpegts'){
+        await this._playMpegTs(channel.url);
+      } else {
+        await this._playHls(channel.url);
+      }
+    }catch(e){
+      this.ui.toastMsg('تعذّر تشغيل القناة. سيتم المحاولة تلقائياً.', 'bad', 2800);
+      // Let monitor or user retry; keep overlay visible
+      this.ui.showLoading('فشل التشغيل', 'جاري انتظار إعادة الاتصال أو جرّب قناة أخرى');
+    }
+
+    // Stats loop
+    this._statsTimer = setInterval(()=> this._updateStatsUI(), 700);
+    this._updateStatsUI();
+  }
+
+  async _playHls(originalUrl){
+    // Use Hls.js when supported
+    if (window.Hls && Hls.isSupported()){
+      const cfg = this._bestHlsConfig(originalUrl);
+      this.hls = new Hls(cfg);
+
+      this._bindHlsEvents();
+
+      // Important: keep source as ORIGINAL url, loader will proxy it.
+      this.hls.loadSource(originalUrl);
+      this.hls.attachMedia(this.video);
+
+      this.ui.setStats({ typeText:'HLS' });
+      this.ui.setQualityText('Auto');
+
+      // Try play
+      await this._safePlay();
+      return;
+    }
+
+    // Native HLS (Safari)
+    // NOTE: For native, we must use proxy URL to avoid CORS.
+    // It assumes proxy endpoint can serve/resolve the playlist correctly.
+    if (this.video.canPlayType('application/vnd.apple.mpegurl')){
+      this.video.src = proxyUrl(originalUrl);
+      this.ui.setStats({ typeText:'HLS (Native)' });
+      this.ui.setQualityText('Auto');
+      await this._safePlay();
+      return;
+    }
+
+    throw new Error('HLS not supported');
+  }
+
+  async _playMpegTs(originalUrl){
+    if (!window.mpegts || !mpegts.getFeatureList?.().mseLivePlayback){
+      // Some browsers still can play TS? usually no. We'll try anyway via <video src>
+      this.video.src = proxyUrl(originalUrl);
+      await this._safePlay();
+      return;
+    }
+
+    const url = proxyUrl(originalUrl);
+
+    // Create mpegts player (low-latency oriented)
+    this.ts = mpegts.createPlayer({
+      type: 'mpegts',
+      url,
+      isLive: true,
+      cors: true
+    }, {
+      enableStashBuffer: false, // lower latency
+      stashInitialSize: 128
+    });
+
+    this.ts.attachMediaElement(this.video);
+    this.ts.load();
+
+    this.ui.setQualityText('—'); // MPEGTS typically single quality
+    await this._safePlay();
+  }
+
+  async _safePlay(){
+    try{
+      const p = this.video.play();
+      if (p && typeof p.then === 'function') await p;
+      // If autoplay blocked, show hint but keep overlay until user presses play
+      this.ui.hideLoading();
+    }catch{
+      // Autoplay may be blocked on some browsers
+      this.ui.showLoading('اضغط تشغيل', 'تم منع التشغيل التلقائي. اضغط زر التشغيل.');
+      this.ui.setPlayState(false);
+    }
+  }
+
+  togglePlay(){
+    if (!this.video) return;
+    if (this.video.paused) this._safePlay();
+    else this.video.pause();
+  }
+
+  toggleMute(){
+    this.video.muted = !this.video.muted;
+    this.storage.setMuted(this.video.muted);
+    this.ui.setMuteState(this.video.muted);
+  }
+
+  setVolume(v){
+    this.video.volume = clamp(Number(v), 0, 1);
+    // volumechange event will persist it
+  }
+
+  async enterFullscreen(container){
+    const el = container || document.documentElement;
+    try{
+      if (!document.fullscreenElement){
+        await el.requestFullscreen?.();
+      } else {
+        await document.exitFullscreen?.();
+      }
+    }catch{}
+  }
+
+  async togglePiP(){
+    const v = this.video;
+    try{
+      if (!document.pictureInPictureElement){
+        if (document.pictureInPictureEnabled && v.requestPictureInPicture) await v.requestPictureInPicture();
+      } else {
+        await document.exitPictureInPicture?.();
+      }
+    }catch{
+      this.ui.toastMsg('Picture-in-Picture غير مدعوم على هذا الجهاز.', 'warn', 2200);
+    }
+  }
+
+  showQualityMenu(){
+    if (!this.hls || !this._qualityLevels.length){
+      this.ui.toastMsg('لا توجد جودات متعددة لهذه القناة.', 'warn', 1800);
+      return;
+    }
+    this.ui.showQualityMenu(
+      this._qualityLevels,
+      this.hls.currentLevel,
+      this.hls.autoLevelEnabled
+    );
+  }
+
+  setQuality(level){
+    if (!this.hls) return;
+
+    if (level === -1){
+      this.hls.currentLevel = -1;
+      this.hls.loadLevel = -1;
+      this.hls.nextLevel = -1;
+      this._syncQualityText();
+      return;
+    }
+
+    const idx = Number(level);
+    if (!Number.isInteger(idx)) return;
+    if (!this.hls.levels || idx < 0 || idx >= this.hls.levels.length) return;
+
+    // Switch without reload
+    this.hls.currentLevel = idx;
+    this.hls.loadLevel = idx;
+    this.hls.nextLevel = idx;
+    this._syncQualityText();
+  }
+
+  /**
+   * Smarters-like staged repair actions.
+   */
+  async repairStage(stage){
+    const ch = this.currentChannel;
+    if (!ch) return;
+
+    // Small helper to avoid "black screen"
+    const keepLoading = (t, m) => this.ui.showLoading(t, m);
+
+    // Stage 1: quick repair
+    if (stage === 1){
+      if (this.hls){
+        try{ this.hls.recoverMediaError(); }catch{}
+        try{ this.hls.startLoad(-1); }catch{}
+      } else if (this.ts){
+        try{
+          this.ts.unload();
+          this.ts.load();
+        }catch{}
+      }
+      await this._safePlay();
+      setTimeout(()=> this.ui.hideLoading(), 800);
+      return;
+    }
+
+    // Stage 2: reload playlist
+    if (stage === 2){
+      if (this.hls){
+        try{
+          // stop+start triggers fresh playlist reload
+          this.hls.stopLoad();
+          this.hls.startLoad(-1);
+        }catch{}
+      } else if (this.ts){
+        try{
+          this.ts.unload();
+          this.ts.load();
+        }catch{}
+      }
+      await this._safePlay();
+      setTimeout(()=> this.ui.hideLoading(), 900);
+      return;
+    }
+
+    // Stage 3: destroy + recreate player (same channel)
+    if (stage === 3){
+      keepLoading('إعادة إنشاء المشغل...', 'Destroy + Recreate Player');
+      const cur = this.currentChannel;
+      // Important: full destroy to avoid leaks
+      this.destroyPlayers();
+      await this.playChannel(cur);
+      return;
+    }
+
+    // Stage 4: reload channel (hard)
+    if (stage === 4){
+      keepLoading('إعادة تحميل القناة...', 'Hard Reload Channel');
+      const cur = this.currentChannel;
+      this.destroyPlayers();
+      await this.playChannel(cur);
+      return;
+    }
+  }
+
+  async handleInternetRestored(){
+    // If internet returns, try to resume or reload if needed
+    if (!this.currentChannel) return;
+
+    // If video is not playing, try play; if still stuck, stage 2
+    if (this.video.paused){
+      await this._safePlay();
+      return;
+    }
+
+    // If stalled, quick repair
+    const buf = this.getBufferedSeconds();
+    if (buf < 0.2){
+      await this.repairStage(2);
+    }
+  }
+}
+
+/**
+ * =========================================================
+ * App Orchestrator
+ * =========================================================
+ * - ينسّق ChannelManager + UI + Player + Monitors
+ */
+class App{
+  constructor(){
+    this.storage = new StorageManager();
+    this.cm = new ChannelManager();
+    this.ui = new UIManager();
+
+    this.video = $('#video');
+    this.playerWrap = $('#playerWrap');
+
+    this.pm = new PlayerManager(this.video, this.ui, this.storage);
+    this.nm = new NetworkMonitor(this.ui, this.pm);
+    this.connMon = new ConnectionMonitor(this.ui, this.pm);
+
+    this.favorites = this.storage.getFavorites();
+    this.activeId = '';
+    this.currentFiltered = [];
+
+    this._initUIHandlers();
+  }
+
+  _initUIHandlers(){
+    this.ui.setHandlers({
+      onSearch: ()=> this.renderList(),
+      onTabChange: ()=> this.renderList(),
+
+      onChannelSelect: async (id) => {
+        const ch = this.cm.getById(id);
+        if (!ch) return;
+        await this.openChannel(ch);
+      },
+
+      onToggleFavorite: (id) => {
+        if (this.favorites.has(id)) this.favorites.delete(id);
+        else this.favorites.add(id);
+        this.storage.setFavorites(this.favorites);
+        this.renderList(); // update star states
+        this._syncFavBottomButton();
+      },
+
+      onReloadList: async ()=> {
+        await this.reloadChannels();
+      },
+
+      onTogglePlay: ()=> this.pm.togglePlay(),
+      onToggleMute: ()=> this.pm.toggleMute(),
+      onVolumeChange: (v)=> this.pm.setVolume(v),
+
+      onFullscreen: ()=> this.pm.enterFullscreen(this.playerWrap),
+      onPiP: ()=> this.pm.togglePiP(),
+
+      onQualityMenuToggle: ()=> {
+        // Toggle menu
+        if (this.ui.qualityMenu.classList.contains('show')) this.ui.hideQualityMenu();
+        else this.pm.showQualityMenu();
+      },
+      onQualitySelect: (level)=> this.pm.setQuality(level),
+
+      onFavToggleBottom: ()=> {
+        if (!this.activeId) return;
+        if (this.favorites.has(this.activeId)) this.favorites.delete(this.activeId);
+        else this.favorites.add(this.activeId);
+        this.storage.setFavorites(this.favorites);
+        this.renderList();
+        this._syncFavBottomButton();
+      }
+    });
+  }
+
+  _syncFavBottomButton(){
+    const ch = this.cm.getById(this.activeId);
+    if (!ch) return;
+    this.ui.renderInfo(ch, this.favorites.has(ch.id));
+  }
+
+  async start(){
+    // Restore volume/mute early
+    const vol = this.storage.getVolume();
+    const muted = this.storage.getMuted();
+    this.video.volume = vol;
+    this.video.muted = muted;
+    this.ui.setVolumeUI(vol);
+    this.ui.setMuteState(muted);
+
+    // Start monitors
+    this.nm.start();
+    this.connMon.attach(this.video);
+    this.connMon.start();
+
+    // Load channels
+    await this.reloadChannels();
+
+    // Auto open last channel
+    const lastId = this.storage.getLastChannelId();
+    const last = lastId ? this.cm.getById(lastId) : null;
+
+    const first = this.cm.channels[0] || null;
+    const ch = last || first;
+
+    if (ch){
+      await this.openChannel(ch);
+    }else{
+      this.ui.showLoading('لا توجد قنوات', 'تحقق من /api/m3u/default');
+    }
+  }
+
+  async reloadChannels(){
+    try{
+      this.ui.showLoading('جاري تحميل القنوات...', 'قراءة /api/m3u/default');
+      await this.cm.loadDefaultM3U();
+      this.ui.hideLoading();
+      this.renderList();
+      this.ui.toastMsg('تم تحميل القنوات بنجاح.', 'ok', 1800);
+    }catch(e){
+      this.ui.showLoading('فشل تحميل القائمة', String(e?.message || e));
+      this.ui.toastMsg('فشل تحميل قائمة القنوات.', 'bad', 2600);
+    }
+  }
+
+  renderList(){
+    const tab = this.ui.currentTab;
+    const query = this.ui.currentQuery;
+
+    const recent = this.storage.getRecent();
+    const list = this.cm.filter({
+      query,
+      tab,
+      favoritesSet: this.favorites,
+      recentIds: recent
+    });
+
+    this.currentFiltered = list;
+    this.ui.renderChannelList(list, this.favorites, this.activeId);
+  }
+
+  async openChannel(ch){
+    // Save recent
+    this.storage.pushRecent(ch.id);
+
+    // Update UI immediately (logo/title) to avoid black feel
+    this.activeId = ch.id;
+    this.ui.setActiveChannel(ch.id);
+    this.ui.renderInfo(ch, this.favorites.has(ch.id));
+
+    // Reset connection monitor stage
+    this.connMon.reset();
+
+    // Play
+    await this.pm.playChannel(ch);
+
+    // After open, refresh list for Recent tab ordering
+    this.renderList();
+  }
+}
+
+/**
+ * Boot
+ */
+(async function(){
+  const app = new App();
+
+  // Global shortcut keys (helpful on desktop / TV remotes)
+  document.addEventListener('keydown', (e)=>{
+    // Space: play/pause (avoid when typing search)
+    if ((e.key === ' ' || e.code === 'Space') && document.activeElement !== $('#searchInput')){
+      e.preventDefault();
+      app.pm.togglePlay();
+    }
+    // F: fullscreen
+    if (e.key.toLowerCase() === 'f'){
+      app.pm.enterFullscreen($('#playerWrap'));
+    }
+    // M: mute
+    if (e.key.toLowerCase() === 'm'){
+      app.pm.toggleMute();
+    }
+  });
+
+  await app.start();
+})();
+</script>
+</body>
+</html>
