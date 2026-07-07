@@ -248,22 +248,6 @@ def home():
         html = f.read()
     return Response(html, content_type="text/html; charset=utf-8", headers={"Cache-Control": "no-store"})
 
-@app.route("/", methods=["GET"])
-def home():
-    path = PLAYER_V2_PATH if os.path.exists(PLAYER_V2_PATH) else PLAYER_PATH
-
-    if not os.path.exists(path):
-        return "player.html / player_v2.html not found inside data folder", 404
-
-    with open(path, "r", encoding="utf-8", errors="ignore") as f:
-        html = f.read()
-
-    return Response(
-        html,
-        content_type="text/html; charset=utf-8",
-        headers={"Cache-Control": "no-store"},
-    )
-
 
 @app.route("/player_v2", methods=["GET"])
 def player_v2():
