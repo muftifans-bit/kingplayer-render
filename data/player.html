@@ -665,15 +665,23 @@ function playHLS(url){
 
       liveDurationInfinity:true,
 
-      liveSyncDurationCount:8,
+      liveSyncDurationCount:10,
 
-      liveMaxLatencyDurationCount:30,
+      liveMaxLatencyDurationCount:25,
 
-      maxBufferLength:90,
+      maxBufferLength:120,
 
       maxMaxBufferLength:180,
 
-      backBufferLength:60,
+      backBufferLength:90,
+
+      maxBufferHole:1.5,
+
+      highBufferWatchdogPeriod:3,
+
+      nudgeOffset:0.2,
+
+      nudgeMaxRetry:10,
 
       manifestLoadingTimeOut:30000,
 
@@ -744,7 +752,32 @@ function playHLS(url){
           );
 
           try{
+
+            const seekable=video.seekable;
+
+            if(seekable.length){
+
+              const safeEnd=
+                seekable.end(
+                  seekable.length-1
+                );
+
+              const safeStart=
+                seekable.start(
+                  seekable.length-1
+                );
+
+              video.currentTime=
+                Math.max(
+                  safeStart,
+                  safeEnd-40
+                );
+            }
+
             hls.startLoad();
+
+            video.play().catch(()=>{});
+
           }catch(error){}
 
           return;
@@ -918,8 +951,36 @@ function startMonitor(){
       return;
     }
 
-    const now=
-      Date.now();
+    const now=Date.now();
+
+    let bufferAhead=0;
+
+    try{
+
+      if(video.buffered.length){
+
+        for(
+          let i=0;
+          i<video.buffered.length;
+          i++
+        ){
+
+          if(
+            video.currentTime>=video.buffered.start(i)-0.5 &&
+            video.currentTime<=video.buffered.end(i)+0.5
+          ){
+
+            bufferAhead=Math.max(
+              0,
+              video.buffered.end(i)-video.currentTime
+            );
+
+            break;
+          }
+        }
+      }
+
+    }catch(error){}
 
     if(
       video.currentTime===
@@ -935,21 +996,55 @@ function startMonitor(){
         now-stuckSince;
 
       if(
-        stuckFor>25000 &&
-        hls
+        hls &&
+        stuckFor>7000
       ){
 
         status(
-          "⏳ البث متوقف مؤقتًا... محاولة إصلاح"
+          "⏳ ضعف مؤقت بالبث... جاري استخدام المخزن"
         );
 
         try{
+
+          const seekable=video.seekable;
+
+          if(seekable.length){
+
+            const safeEnd=
+              seekable.end(
+                seekable.length-1
+              );
+
+            const safeStart=
+              seekable.start(
+                seekable.length-1
+              );
+
+            const safePosition=
+              Math.max(
+                safeStart,
+                safeEnd-40
+              );
+
+            if(
+              safePosition>
+              video.currentTime+2
+            ){
+
+              video.currentTime=
+                safePosition;
+            }
+          }
+
           hls.startLoad();
+
+          video.play().catch(()=>{});
+
         }catch(error){}
       }
 
       if(
-        stuckFor>60000
+        stuckFor>25000
       ){
 
         softReload();
@@ -962,14 +1057,23 @@ function startMonitor(){
       lastTime=
         video.currentTime;
 
+      if(
+        bufferAhead<8 &&
+        hls
+      ){
+
+        try{
+          hls.startLoad();
+        }catch(error){}
+      }
+
       status(
         "✅ البث يعمل الآن"
       );
     }
 
-  },5000);
+  },2000);
 }
-
 
 function softReload(){
 
