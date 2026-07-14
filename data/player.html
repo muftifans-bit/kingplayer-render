@@ -1,90 +1,267 @@
-<!DOCTYPE html>
-<html lang="ar" dir="rtl">
+<!DOCTYPE html><html lang="ar" dir="rtl">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>البث المباشر الخاص بشبكة سمكة نت اللاسلكية</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"><title>البث المباشر الخاص بشبكة سمكة نت اللاسلكية</title><script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script><script src="https://cdn.jsdelivr.net/npm/mpegts.js@latest"></script><style>
+*{
+  box-sizing:border-box;
+}
 
-<script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
-<script src="https://cdn.jsdelivr.net/npm/mpegts.js@latest"></script>
+body{
+  margin:0;
+  min-height:100vh;
+  color:#fff;
+  font-family:Tahoma,Arial,sans-serif;
+  background:
+    radial-gradient(circle at top right,#ffd70022,transparent 35%),
+    radial-gradient(circle at bottom left,#00d4ff22,transparent 35%),
+    linear-gradient(135deg,#050505,#121212 45%,#050505);
+}
 
-<style>
-*{box-sizing:border-box}
-body{margin:0;min-height:100vh;color:#fff;font-family:Tahoma,Arial,sans-serif;background:radial-gradient(circle at top right,#ffd70022,transparent 35%),radial-gradient(circle at bottom left,#00d4ff22,transparent 35%),linear-gradient(135deg,#050505,#121212 45%,#050505)}
-.header{padding:22px 14px;text-align:center;background:linear-gradient(135deg,#101010,#1d1d1d);border-bottom:1px solid #ffffff18}
-.header h1{margin:0;color:#ffd700;font-size:22px;line-height:1.5}
-.header p{margin:8px 0 0;color:#ddd;font-size:13px}
-.container{width:min(1100px,100%);margin:auto;padding:14px}
-.player-card{position:sticky;top:0;z-index:10;overflow:hidden;border-radius:22px;background:linear-gradient(180deg,#171717,#070707);border:1px solid #ffffff20;box-shadow:0 20px 50px #000c}
-.player-top{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:12px 14px;background:linear-gradient(90deg,#202020,#111)}
-#channelName{color:#ffd700;font-weight:bold;font-size:15px}
-.live-badge{background:#e60023;color:#fff;padding:6px 12px;border-radius:999px;font-size:12px;font-weight:bold}
-.video-wrap{background:#000}
-video{width:100%;height:44vh;max-height:520px;min-height:240px;display:block;background:#000}
-#status{padding:10px 14px;color:#bbb;font-size:13px;background:#0d0d0d;border-top:1px solid #ffffff12}
-.player-actions{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;padding:10px;background:#111}
-.action-btn{border:1px solid #ffffff20;border-radius:14px;padding:12px;color:#fff;background:#181818;font-weight:bold;cursor:pointer}
-.action-btn:hover{border-color:#ffd700}
-.tools{margin:16px 0 12px;display:grid;grid-template-columns:1fr auto;gap:10px}
-.search{width:100%;border:1px solid #ffffff20;outline:none;border-radius:16px;padding:14px;color:#fff;background:#111;font-size:15px}
-.counter{display:flex;align-items:center;justify-content:center;min-width:105px;border-radius:16px;background:#ffd700;color:#111;font-weight:bold;font-size:14px}
-.channels{display:grid;grid-template-columns:repeat(auto-fill,minmax(170px,1fr));gap:10px;padding-bottom:30px}
-button.channel{min-height:74px;border:none;border-radius:18px;padding:12px;color:#fff;background:linear-gradient(135deg,#1a1a1a,#101010);border:1px solid #ffffff18;text-align:right;cursor:pointer;transition:.25s}
-button.channel:hover{transform:translateY(-3px);border-color:#ffd70088}
-button.channel.active{background:linear-gradient(135deg,#ffd700,#ffb300);color:#000}
-.ch-icon{font-size:22px;display:block;margin-bottom:6px}
-.ch-name{font-weight:bold;font-size:14px;line-height:1.5}
-.empty{text-align:center;color:#aaa;padding:25px;grid-column:1/-1}
-@media(max-width:700px){.player-actions{grid-template-columns:1fr 1fr}}
-@media(max-width:600px){.header h1{font-size:18px}video{height:36vh}.channels{grid-template-columns:1fr 1fr}}
-</style>
-</head>
+.header{
+  padding:22px 14px;
+  text-align:center;
+  background:linear-gradient(135deg,#101010,#1d1d1d);
+  border-bottom:1px solid #ffffff18;
+}
 
-<body>
+.header h1{
+  margin:0;
+  color:#ffd700;
+  font-size:22px;
+  line-height:1.5;
+}
 
-<div class="header">
+.header p{
+  margin:8px 0 0;
+  color:#ddd;
+  font-size:13px;
+}
+
+.container{
+  width:min(1100px,100%);
+  margin:auto;
+  padding:14px;
+}
+
+.player-card{
+  position:sticky;
+  top:0;
+  z-index:10;
+  overflow:hidden;
+  border-radius:22px;
+  background:linear-gradient(180deg,#171717,#070707);
+  border:1px solid #ffffff20;
+  box-shadow:0 20px 50px #000c;
+}
+
+.player-top{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:10px;
+  padding:12px 14px;
+  background:linear-gradient(90deg,#202020,#111);
+}
+
+#channelName{
+  color:#ffd700;
+  font-weight:bold;
+  font-size:15px;
+}
+
+.live-badge{
+  background:#e60023;
+  color:#fff;
+  padding:6px 12px;
+  border-radius:999px;
+  font-size:12px;
+  font-weight:bold;
+}
+
+.video-wrap{
+  background:#000;
+}
+
+video{
+  width:100%;
+  height:44vh;
+  max-height:520px;
+  min-height:240px;
+  display:block;
+  background:#000;
+}
+
+#status{
+  padding:10px 14px;
+  color:#bbb;
+  font-size:13px;
+  background:#0d0d0d;
+  border-top:1px solid #ffffff12;
+}
+
+.player-actions{
+  display:grid;
+  grid-template-columns:repeat(4,1fr);
+  gap:10px;
+  padding:10px;
+  background:#111;
+}
+
+.action-btn{
+  border:1px solid #ffffff20;
+  border-radius:14px;
+  padding:12px;
+  color:#fff;
+  background:#181818;
+  font-weight:bold;
+  cursor:pointer;
+}
+
+.action-btn:hover{
+  border-color:#ffd700;
+}
+
+.tools{
+  margin:16px 0 12px;
+  display:grid;
+  grid-template-columns:1fr auto;
+  gap:10px;
+}
+
+.search{
+  width:100%;
+  border:1px solid #ffffff20;
+  outline:none;
+  border-radius:16px;
+  padding:14px;
+  color:#fff;
+  background:#111;
+  font-size:15px;
+}
+
+.counter{
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  min-width:105px;
+  border-radius:16px;
+  background:#ffd700;
+  color:#111;
+  font-weight:bold;
+  font-size:14px;
+}
+
+.channels{
+  display:grid;
+  grid-template-columns:repeat(auto-fill,minmax(170px,1fr));
+  gap:10px;
+  padding-bottom:30px;
+}
+
+button.channel{
+  min-height:74px;
+  border:none;
+  border-radius:18px;
+  padding:12px;
+  color:#fff;
+  background:linear-gradient(135deg,#1a1a1a,#101010);
+  border:1px solid #ffffff18;
+  text-align:right;
+  cursor:pointer;
+  transition:.25s;
+}
+
+button.channel:hover{
+  transform:translateY(-3px);
+  border-color:#ffd70088;
+}
+
+button.channel.active{
+  background:linear-gradient(135deg,#ffd700,#ffb300);
+  color:#000;
+}
+
+.ch-icon{
+  font-size:22px;
+  display:block;
+  margin-bottom:6px;
+}
+
+.ch-name{
+  font-weight:bold;
+  font-size:14px;
+  line-height:1.5;
+}
+
+.empty{
+  text-align:center;
+  color:#aaa;
+  padding:25px;
+  grid-column:1/-1;
+  line-height:2;
+}
+
+@media(max-width:700px){
+  .player-actions{
+    grid-template-columns:1fr 1fr;
+  }
+}
+
+@media(max-width:600px){
+  .header h1{
+    font-size:18px;
+  }
+
+  video{
+    height:36vh;
+  }
+
+  .channels{
+    grid-template-columns:1fr 1fr;
+  }
+}
+</style></head><body><div class="header">
   <h1>📡 البث المباشر الخاص بشبكة سمكة نت اللاسلكية</h1>
   <p>مشاهدة مباشرة بجودة عالية عبر شبكة سمكة نت</p>
+</div><div class="container">  <div class="player-card"><div class="player-top">
+  <div id="channelName">اختر قناة لبدء المشاهدة</div>
+  <div class="live-badge">● LIVE</div>
 </div>
 
-<div class="container">
-
-  <div class="player-card">
-    <div class="player-top">
-      <div id="channelName">اختر قناة لبدء المشاهدة</div>
-      <div class="live-badge">● LIVE</div>
-    </div>
-
-    <div class="video-wrap">
-      <video id="video" controls autoplay playsinline muted></video>
-    </div>
-
-    <div id="status">جاري تحميل ملف القنوات...</div>
-
-    <div class="player-actions">
-      <button class="action-btn" onclick="reloadCurrent()">🔄 إعادة تحميل</button>
-      <button class="action-btn" onclick="openMX()">📱 MX Player</button>
-      <button class="action-btn" onclick="openVLC()">▶ VLC</button>
-      <button class="action-btn" onclick="fullScreen()">⛶ ملء الشاشة</button>
-    </div>
-  </div>
-
-  <div class="tools">
-    <input class="search" id="search" placeholder="🔎 ابحث عن قناة...">
-    <div class="counter" id="counter">0 قناة</div>
-  </div>
-
-  <div class="channels" id="channels"></div>
-
+<div class="video-wrap">
+  <video
+    id="video"
+    controls
+    autoplay
+    playsinline
+    muted
+  ></video>
 </div>
 
-<script>
+<div id="status">جاري تحميل ملف القنوات...</div>
+
+<div class="player-actions">
+  <button class="action-btn" onclick="reloadCurrent()">🔄 إعادة تحميل</button>
+  <button class="action-btn" onclick="openMX()">📱 MX Player</button>
+  <button class="action-btn" onclick="openVLC()">▶ VLC</button>
+  <button class="action-btn" onclick="fullScreen()">⛶ ملء الشاشة</button>
+</div>
+
+  </div>  <div class="tools">
+    <input
+      class="search"
+      id="search"
+      placeholder="🔎 ابحث عن قناة..."
+    ><div class="counter" id="counter">0 قناة</div>
+
+  </div>  <div class="channels" id="channels"></div></div><script>
 let hls=null;
 let tsPlayer=null;
 let allChannels=[];
 
 let currentChannel=null;
 let currentBtn=null;
+
 let retryCount=0;
 let lastTime=0;
 let stuckCount=0;
@@ -101,62 +278,120 @@ const statusBox=document.getElementById("status");
 const searchBox=document.getElementById("search");
 const counter=document.getElementById("counter");
 
-function status(t){statusBox.innerText=t}
+
+function status(text){
+  statusBox.innerText=text;
+}
+
 
 function stop(){
   manualStop=true;
+
   clearTimeout(waitTimer);
 
-  if(hls){try{hls.destroy()}catch(e){} hls=null}
+  if(hls){
+    try{
+      hls.destroy();
+    }catch(error){
+      console.error(error);
+    }
+
+    hls=null;
+  }
+
   if(tsPlayer){
-    try{tsPlayer.unload()}catch(e){}
-    try{tsPlayer.detachMediaElement()}catch(e){}
-    try{tsPlayer.destroy()}catch(e){}
+    try{
+      tsPlayer.unload();
+    }catch(error){}
+
+    try{
+      tsPlayer.detachMediaElement();
+    }catch(error){}
+
+    try{
+      tsPlayer.destroy();
+    }catch(error){}
+
     tsPlayer=null;
   }
 
-  try{video.pause()}catch(e){}
+  try{
+    video.pause();
+  }catch(error){}
+
   video.removeAttribute("src");
-  video.load();
+
+  try{
+    video.load();
+  }catch(error){}
 }
 
+
 function play(name,url,btn){
-  currentChannel={name:name,url:url};
+  currentChannel={
+    name:name,
+    url:url
+  };
+
   currentBtn=btn;
+
   retryCount=0;
   stuckCount=0;
   lastTime=0;
+
   manualStop=false;
   lastPlayStart=Date.now();
+
   clearTimeout(waitTimer);
+
   isRecovering=false;
 
-  document.querySelectorAll("button.channel").forEach(b=>b.classList.remove("active"));
-  if(btn) btn.classList.add("active");
+  document
+    .querySelectorAll("button.channel")
+    .forEach(button=>{
+      button.classList.remove("active");
+    });
+
+  if(btn){
+    btn.classList.add("active");
+  }
 
   title.innerText="📺 "+name;
+
   status("جاري تشغيل البث...");
+
   stop();
+
   manualStop=false;
   lastPlayStart=Date.now();
 
-  const u=url.toLowerCase();
-  if(u.includes(".m3u8")) playHLS(url);
-  else playTS(url);
+  const normalizedUrl=url.toLowerCase();
+
+  if(normalizedUrl.includes(".m3u8")){
+    playHLS(url);
+  }else{
+    playTS(url);
+  }
 }
+
 
 function playHLS(url){
   if(window.Hls && Hls.isSupported()){
+
     hls=new Hls({
       enableWorker:true,
       lowLatencyMode:false,
+
       liveSyncDurationCount:6,
       liveMaxLatencyDurationCount:20,
+
       maxBufferLength:60,
       maxMaxBufferLength:120,
       backBufferLength:30,
+
       manifestLoadingTimeOut:20000,
       fragLoadingTimeOut:30000,
+
       manifestLoadingMaxRetry:10,
       fragLoadingMaxRetry:10,
       levelLoadingMaxRetry:10
@@ -166,34 +401,75 @@ function playHLS(url){
     hls.attachMedia(video);
 
     hls.on(Hls.Events.MANIFEST_PARSED,()=>{
-      video.play().then(()=>status("✅ البث يعمل الآن")).catch(()=>status("اضغط تشغيل من شاشة الفيديو"));
+      video
+        .play()
+        .then(()=>{
+          status("✅ البث يعمل الآن");
+        })
+        .catch(()=>{
+          status("اضغط تشغيل من شاشة الفيديو");
+        });
     });
 
     hls.on(Hls.Events.ERROR,(event,data)=>{
-      if(!data.fatal) return;
+      console.error("HLS ERROR:",data);
+
+      if(!data.fatal){
+        return;
+      }
 
       if(data.type===Hls.ErrorTypes.NETWORK_ERROR){
+
         status("ضعف في الاتصال... جاري الانتظار");
-        try{hls.startLoad()}catch(e){}
+
+        try{
+          hls.startLoad();
+        }catch(error){}
+
         delayedReplay(15000);
+
       }else if(data.type===Hls.ErrorTypes.MEDIA_ERROR){
+
         status("مشكلة في الفيديو... محاولة إصلاح");
-        try{hls.recoverMediaError()}catch(e){}
+
+        try{
+          hls.recoverMediaError();
+        }catch(error){}
+
       }else{
+
+        status("حدث خطأ في البث... جاري الاستعادة");
+
         delayedReplay(8000);
       }
     });
 
   }else if(video.canPlayType("application/vnd.apple.mpegurl")){
+
     video.src=url;
-    video.play().then(()=>status("✅ البث يعمل الآن")).catch(()=>status("اضغط تشغيل من شاشة الفيديو"));
+
+    video
+      .play()
+      .then(()=>{
+        status("✅ البث يعمل الآن");
+      })
+      .catch(()=>{
+        status("اضغط تشغيل من شاشة الفيديو");
+      });
+
   }else{
+
     fallback(url);
   }
 }
 
+
 function playTS(url){
-  if(window.mpegts && mpegts.getFeatureList().mseLivePlayback){
+  if(
+    window.mpegts &&
+    mpegts.getFeatureList().mseLivePlayback
+  ){
+
     tsPlayer=mpegts.createPlayer({
       type:"mpegts",
       isLive:true,
@@ -201,142 +477,293 @@ function playTS(url){
     },{
       enableStashBuffer:true,
       stashInitialSize:1024*1024,
+
       autoCleanupSourceBuffer:true,
       autoCleanupMaxBackwardDuration:60,
       autoCleanupMinBackwardDuration:20,
+
       lazyLoad:false,
       seekType:"range"
     });
 
     tsPlayer.attachMediaElement(video);
+
     tsPlayer.load();
 
-    video.play().then(()=>status("✅ البث يعمل الآن")).catch(()=>status("اضغط تشغيل من شاشة الفيديو"));
+    video
+      .play()
+      .then(()=>{
+        status("✅ البث يعمل الآن");
+      })
+      .catch(()=>{
+        status("اضغط تشغيل من شاشة الفيديو");
+      });
 
-    tsPlayer.on(mpegts.Events.ERROR,()=>{
+    tsPlayer.on(mpegts.Events.ERROR,(errorType,errorDetail,errorInfo)=>{
+      console.error(
+        "MPEGTS ERROR:",
+        errorType,
+        errorDetail,
+        errorInfo
+      );
+
       status("ضعف مؤقت في البث... جاري الانتظار");
+
       delayedReplay(15000);
     });
 
   }else{
+
     fallback(url);
   }
 }
 
+
 function fallback(url){
   video.src=url;
-  video.play().then(()=>status("✅ البث يعمل الآن")).catch(()=>status("⚠️ هذا الرابط لا يعمل في المتصفح أو يحتاج مشغل خارجي"));
+
+  video
+    .play()
+    .then(()=>{
+      status("✅ البث يعمل الآن");
+    })
+    .catch(error=>{
+      console.error("VIDEO ERROR:",error);
+
+      status(
+        "⚠️ هذا الرابط لا يعمل في المتصفح أو يحتاج مشغل خارجي"
+      );
+    });
 }
+
 
 function delayedReplay(delay=15000){
-  if(manualStop) return;
-  if(!currentChannel || !currentBtn) return;
+  if(manualStop){
+    return;
+  }
+
+  if(!currentChannel || !currentBtn){
+    return;
+  }
 
   clearTimeout(waitTimer);
-  waitTimer=setTimeout(()=>{replay()},delay);
+
+  waitTimer=setTimeout(()=>{
+    replay();
+  },delay);
 }
 
+
 function replay(force=false){
-  if(manualStop) return;
-  if(!currentChannel || !currentBtn) return;
-  if(isRecovering) return;
+  if(manualStop){
+    return;
+  }
+
+  if(!currentChannel || !currentBtn){
+    return;
+  }
+
+  if(isRecovering){
+    return;
+  }
 
   const now=Date.now();
 
-  if(!force && now-lastPlayStart<20000){
+  if(
+    !force &&
+    now-lastPlayStart<20000
+  ){
     status("⏳ جاري انتظار استقرار البث...");
     return;
   }
 
   isRecovering=true;
+
   retryCount++;
 
   if(retryCount<=6){
-    status("🔄 جاري استعادة البث... المحاولة "+retryCount);
+
+    status(
+      "🔄 جاري استعادة البث... المحاولة "+retryCount
+    );
+
+    const channel=currentChannel;
+    const button=currentBtn;
+
     setTimeout(()=>{
       isRecovering=false;
-      play(currentChannel.name,currentChannel.url,currentBtn);
+
+      play(
+        channel.name,
+        channel.url,
+        button
+      );
     },3000);
+
   }else{
+
     isRecovering=false;
-    status("⚠️ البث غير مستقر حالياً، جرّب MX Player أو VLC");
+
+    status(
+      "⚠️ البث غير مستقر حالياً، جرّب MX Player أو VLC"
+    );
   }
 }
 
+
 function reloadCurrent(){
   if(currentChannel && currentBtn){
+
     retryCount=0;
-    play(currentChannel.name,currentChannel.url,currentBtn);
+
+    play(
+      currentChannel.name,
+      currentChannel.url,
+      currentBtn
+    );
+
   }else{
+
     status("اختر قناة أولاً");
   }
 }
 
+
 function fullScreen(){
-  if(video.requestFullscreen) video.requestFullscreen();
-  else if(video.webkitRequestFullscreen) video.webkitRequestFullscreen();
+  if(video.requestFullscreen){
+    video.requestFullscreen();
+  }else if(video.webkitRequestFullscreen){
+    video.webkitRequestFullscreen();
+  }
 }
+
 
 function openMX(){
-  if(!currentChannel){status("اختر قناة أولاً");return}
+  if(!currentChannel){
+    status("اختر قناة أولاً");
+    return;
+  }
+
   const url=currentChannel.url;
-  window.location.href="intent:"+url.replace(/^https?:/,"")+"#Intent;scheme=http;package=com.mxtech.videoplayer.ad;type=video/*;end";
+
+  window.location.href=
+    "intent:"+
+    url.replace(/^https?:/,"")+
+    "#Intent;scheme=http;package=com.mxtech.videoplayer.ad;type=video/*;end";
 }
 
+
 function openVLC(){
-  if(!currentChannel){status("اختر قناة أولاً");return}
+  if(!currentChannel){
+    status("اختر قناة أولاً");
+    return;
+  }
+
   const url=currentChannel.url;
-  window.location.href="intent:"+url.replace(/^https?:/,"")+"#Intent;scheme=http;package=org.videolan.vlc;type=video/*;end";
+
+  window.location.href=
+    "intent:"+
+    url.replace(/^https?:/,"")+
+    "#Intent;scheme=http;package=org.videolan.vlc;type=video/*;end";
 }
+
 
 video.addEventListener("playing",()=>{
   retryCount=0;
   stuckCount=0;
   isRecovering=false;
+
   clearTimeout(waitTimer);
+
   status("✅ البث يعمل الآن");
 });
 
+
 video.addEventListener("waiting",()=>{
   status("⏳ جاري التخزين المؤقت...");
+
   clearTimeout(waitTimer);
 
   waitTimer=setTimeout(()=>{
-    if(!video.paused && currentChannel){
-      status("🔄 البث تأخر أكثر من اللازم... محاولة استعادة");
+
+    if(
+      !video.paused &&
+      currentChannel
+    ){
+      status(
+        "🔄 البث تأخر أكثر من اللازم... محاولة استعادة"
+      );
+
       replay();
     }
+
   },20000);
 });
+
 
 video.addEventListener("stalled",()=>{
-  status("⏳ ضعف مؤقت في الاتصال... جاري الانتظار");
+  status(
+    "⏳ ضعف مؤقت في الاتصال... جاري الانتظار"
+  );
+
   clearTimeout(waitTimer);
 
   waitTimer=setTimeout(()=>{
-    if(!video.paused && currentChannel){
-      status("🔄 البث متوقف... محاولة استعادة");
+
+    if(
+      !video.paused &&
+      currentChannel
+    ){
+      status(
+        "🔄 البث متوقف... محاولة استعادة"
+      );
+
       replay();
     }
+
   },20000);
 });
 
+
 video.addEventListener("error",()=>{
+  console.error(
+    "VIDEO ELEMENT ERROR:",
+    video.error
+  );
+
   status("⚠️ حدث خطأ في البث");
+
   clearTimeout(waitTimer);
-  waitTimer=setTimeout(()=>{replay(true)},6000);
+
+  waitTimer=setTimeout(()=>{
+    replay(true);
+  },6000);
 });
+
 
 video.addEventListener("ended",()=>{
   status("⚠️ توقف البث");
+
   clearTimeout(waitTimer);
-  waitTimer=setTimeout(()=>{replay(true)},5000);
+
+  waitTimer=setTimeout(()=>{
+    replay(true);
+  },5000);
 });
 
+
 setInterval(()=>{
-  if(!currentChannel) return;
-  if(video.paused) return;
-  if(video.readyState<2) return;
+  if(!currentChannel){
+    return;
+  }
+
+  if(video.paused){
+    return;
+  }
+
+  if(video.readyState<2){
+    return;
+  }
 
   if(video.currentTime===lastTime){
     stuckCount++;
@@ -346,63 +773,322 @@ setInterval(()=>{
   }
 
   if(stuckCount>=12){
+
     stuckCount=0;
-    status("🔄 البث عالق منذ فترة... محاولة استعادة");
+
+    status(
+      "🔄 البث عالق منذ فترة... محاولة استعادة"
+    );
+
     replay();
   }
+
 },3000);
 
+
+/*
+=================================
+قراءة ملف M3U
+=================================
+*/
+
 function parseM3U(text){
-  const lines=text.split(/\r?\n/).map(x=>x.trim()).filter(Boolean);
+  const lines=text
+    .replace(/^\uFEFF/,"")
+    .split(/\r?\n/)
+    .map(line=>line.trim());
+
   const channels=[];
+
   let name="قناة بدون اسم";
 
-  for(let line of lines){
+  for(const line of lines){
+
+    if(!line){
+      continue;
+    }
+
     if(line.startsWith("#EXTINF")){
-      name=line.split(",").pop().trim();
-    }else if(line.startsWith("http")){
-      channels.push({name,url:line});
+
+      const commaIndex=line.indexOf(",");
+
+      if(commaIndex!==-1){
+
+        name=line
+          .substring(commaIndex+1)
+          .trim();
+
+      }else{
+
+        name="قناة بدون اسم";
+      }
+
+      continue;
+    }
+
+    if(line.startsWith("#")){
+      continue;
+    }
+
+    if(
+      line.startsWith("http://") ||
+      line.startsWith("https://") ||
+      line.startsWith("/")
+    ){
+
+      channels.push({
+        name:name || "قناة بدون اسم",
+        url:line
+      });
+
+      name="قناة بدون اسم";
     }
   }
+
+  console.log(
+    "PARSED CHANNELS:",
+    channels.length
+  );
+
+  console.log(
+    "FIRST CHANNELS:",
+    channels.slice(0,5)
+  );
+
   return channels;
 }
 
+
+/*
+=================================
+عرض القنوات
+=================================
+*/
+
 function renderChannels(channels){
   list.innerHTML="";
-  counter.innerText=channels.length+" قناة";
+
+  counter.innerText=
+    channels.length+" قناة";
 
   if(!channels.length){
-    list.innerHTML='<div class="empty">لا توجد قناة بهذا الاسم</div>';
+
+    list.innerHTML=
+      '<div class="empty">'+
+      'لا توجد قنوات للعرض'+
+      '</div>';
+
     return;
   }
 
-  channels.forEach(ch=>{
-    const btn=document.createElement("button");
-    btn.className="channel";
-    btn.innerHTML='<span class="ch-icon">📺</span><span class="ch-name">'+ch.name+'</span>';
-    btn.onclick=()=>play(ch.name,ch.url,btn);
-    list.appendChild(btn);
+  channels.forEach(channel=>{
+
+    const button=
+      document.createElement("button");
+
+    button.className="channel";
+
+    const icon=
+      document.createElement("span");
+
+    icon.className="ch-icon";
+    icon.innerText="📺";
+
+    const channelName=
+      document.createElement("span");
+
+    channelName.className="ch-name";
+    channelName.innerText=channel.name;
+
+    button.appendChild(icon);
+    button.appendChild(channelName);
+
+    button.onclick=()=>{
+
+      play(
+        channel.name,
+        channel.url,
+        button
+      );
+    };
+
+    list.appendChild(button);
   });
 }
 
+
+/*
+=================================
+البحث
+=================================
+*/
+
 searchBox.addEventListener("input",()=>{
-  const q=searchBox.value.trim().toLowerCase();
-  const filtered=allChannels.filter(ch=>ch.name.toLowerCase().includes(q));
+
+  const query=
+    searchBox.value
+      .trim()
+      .toLowerCase();
+
+  const filtered=
+    allChannels.filter(channel=>
+      channel.name
+        .toLowerCase()
+        .includes(query)
+    );
+
   renderChannels(filtered);
 });
 
-fetch("default_channels.m3u8?v="+Date.now())
-.then(r=>r.text())
-.then(text=>{
-  allChannels=parseM3U(text);
-  status("✅ تم تحميل "+allChannels.length+" قناة بنجاح");
-  renderChannels(allChannels);
-})
-.catch(()=>{
-  status("❌ لم يتم العثور على ملف القنوات");
-  list.innerHTML='<div class="empty">تأكد أن ملف القنوات موجود بجانب الصفحة</div>';
-});
-</script>
 
-</body>
+/*
+=================================
+تحميل ملف القنوات
+=================================
+*/
+
+async function loadChannels(){
+
+  const fileUrl=
+    "./default_channels.m3u8?v="+
+    Date.now();
+
+  status(
+    "⏳ جاري تحميل ملف القنوات..."
+  );
+
+  counter.innerText="0 قناة";
+
+  try{
+
+    console.log(
+      "LOADING CHANNEL FILE:",
+      fileUrl
+    );
+
+    const response=await fetch(
+      fileUrl,
+      {
+        method:"GET",
+        cache:"no-store"
+      }
+    );
+
+    console.log(
+      "CHANNEL FILE STATUS:",
+      response.status
+    );
+
+    console.log(
+      "CHANNEL FILE URL:",
+      response.url
+    );
+
+    console.log(
+      "CHANNEL FILE CONTENT TYPE:",
+      response.headers.get("content-type")
+    );
+
+    if(!response.ok){
+
+      throw new Error(
+        "HTTP "+response.status
+      );
+    }
+
+    const text=
+      await response.text();
+
+    console.log(
+      "CHANNEL FILE LENGTH:",
+      text.length
+    );
+
+    console.log(
+      "CHANNEL FILE START:",
+      text.substring(0,500)
+    );
+
+    if(!text.trim()){
+
+      throw new Error(
+        "ملف القنوات فارغ"
+      );
+    }
+
+    const cleanStart=
+      text
+        .replace(/^\uFEFF/,"")
+        .trim()
+        .toLowerCase();
+
+    if(
+      cleanStart.startsWith("<!doctype") ||
+      cleanStart.startsWith("<html")
+    ){
+
+      throw new Error(
+        "السيرفر أعاد صفحة HTML بدل ملف القنوات"
+      );
+    }
+
+    allChannels=
+      parseM3U(text);
+
+    if(!allChannels.length){
+
+      throw new Error(
+        "لم يتم العثور على روابط قنوات داخل الملف"
+      );
+    }
+
+    status(
+      "✅ تم تحميل "+
+      allChannels.length+
+      " قناة بنجاح"
+    );
+
+    renderChannels(
+      allChannels
+    );
+
+  }catch(error){
+
+    console.error(
+      "CHANNEL LOAD ERROR:",
+      error
+    );
+
+    allChannels=[];
+
+    counter.innerText=
+      "0 قناة";
+
+    status(
+      "❌ فشل تحميل ملف القنوات: "+
+      error.message
+    );
+
+    list.innerHTML=
+      '<div class="empty">'+
+      '❌ تعذر تحميل ملف القنوات'+
+      '<br><br>'+
+      'الملف المطلوب: default_channels.m3u8'+
+      '<br>'+
+      'الخطأ: '+
+      error.message+
+      '</div>';
+  }
+}
+
+
+/*
+=================================
+بدء تحميل القنوات
+=================================
+*/
+
+loadChannels();
+
+</script></body>
 </html>
