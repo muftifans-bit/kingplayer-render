@@ -391,7 +391,7 @@ searchBox.addEventListener("input",()=>{
   renderChannels(filtered);
 });
 
-fetch("tv_channels_723881351230090.m3u8?v="+Date.now())
+fetch("default_channels.m3u8?v="+Date.now())
 .then(r=>r.text())
 .then(text=>{
   allChannels=parseM3U(text);
