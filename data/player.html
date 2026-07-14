@@ -1,7 +1,15 @@
-<!DOCTYPE html><html lang="ar" dir="rtl">
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0"><title>البث المباشر الخاص بشبكة سمكة نت اللاسلكية</title><script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script><script src="https://cdn.jsdelivr.net/npm/mpegts.js@latest"></script><style>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<title>البث المباشر الخاص بشبكة سمكة نت اللاسلكية</title>
+
+<script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
+<script src="https://cdn.jsdelivr.net/npm/mpegts.js@latest"></script>
+
+<style>
 *{
   box-sizing:border-box;
 }
@@ -220,56 +228,67 @@ button.channel.active{
     grid-template-columns:1fr 1fr;
   }
 }
-</style></head><body><div class="header">
+</style>
+</head>
+
+<body>
+
+<div class="header">
   <h1>📡 البث المباشر الخاص بشبكة سمكة نت اللاسلكية</h1>
   <p>مشاهدة مباشرة بجودة عالية عبر شبكة سمكة نت</p>
-</div><div class="container">  <div class="player-card"><div class="player-top">
-  <div id="channelName">اختر قناة لبدء المشاهدة</div>
-  <div class="live-badge">● LIVE</div>
 </div>
 
-<div class="video-wrap">
-  <video
-    id="video"
-    controls
-    autoplay
-    playsinline
-    muted
-  ></video>
-</div>
+<div class="container">
 
-<div id="status">جاري تحميل ملف القنوات...</div>
+  <div class="player-card">
 
-<div class="player-actions">
-  <button class="action-btn" onclick="reloadCurrent()">🔄 إعادة تحميل</button>
-  <button class="action-btn" onclick="openMX()">📱 MX Player</button>
-  <button class="action-btn" onclick="openVLC()">▶ VLC</button>
-  <button class="action-btn" onclick="fullScreen()">⛶ ملء الشاشة</button>
-</div>
+    <div class="player-top">
+      <div id="channelName">اختر قناة لبدء المشاهدة</div>
+      <div class="live-badge">● LIVE</div>
+    </div>
 
-  </div>  <div class="tools">
+    <div class="video-wrap">
+      <video
+        id="video"
+        controls
+        autoplay
+        playsinline
+        muted
+      ></video>
+    </div>
+
+    <div id="status">جاري تحميل القنوات...</div>
+
+    <div class="player-actions">
+      <button class="action-btn" onclick="reloadCurrent()">🔄 إعادة تحميل</button>
+      <button class="action-btn" onclick="openMX()">📱 MX Player</button>
+      <button class="action-btn" onclick="openVLC()">▶ VLC</button>
+      <button class="action-btn" onclick="fullScreen()">⛶ ملء الشاشة</button>
+    </div>
+
+  </div>
+
+  <div class="tools">
+
     <input
       class="search"
       id="search"
       placeholder="🔎 ابحث عن قناة..."
-    ><div class="counter" id="counter">0 قناة</div>
+    >
 
-  </div>  <div class="channels" id="channels"></div></div><script>
-let hls=null;
-let tsPlayer=null;
-let allChannels=[];
+    <div class="counter" id="counter">
+      0 قناة
+    </div>
 
-let currentChannel=null;
-let currentBtn=null;
+  </div>
 
-let retryCount=0;
-let lastTime=0;
-let stuckCount=0;
-let manualStop=false;
+  <div class="channels" id="channels"></div>
 
-let waitTimer=null;
-let isRecovering=false;
-let lastPlayStart=0;
+</div>
+
+<script>
+
+const BACKEND_URL="";
 
 const video=document.getElementById("video");
 const list=document.getElementById("channels");
@@ -278,28 +297,50 @@ const statusBox=document.getElementById("status");
 const searchBox=document.getElementById("search");
 const counter=document.getElementById("counter");
 
+let allChannels=[];
+
+let currentChannel=null;
+let currentBtn=null;
+
+let hls=null;
+let tsPlayer=null;
+
+let lastTime=0;
+let stuckSince=null;
+let lastReloadAt=0;
+let monitorTimer=null;
+
 
 function status(text){
   statusBox.innerText=text;
 }
 
 
-function stop(){
-  manualStop=true;
+function api(path){
+  return `${BACKEND_URL}${path}`;
+}
 
-  clearTimeout(waitTimer);
+
+function proxied(url){
+  return api(
+    `/api/stream/proxy?url=${encodeURIComponent(url)}`
+  );
+}
+
+
+function clearPlayer(){
 
   if(hls){
+
     try{
       hls.destroy();
-    }catch(error){
-      console.error(error);
-    }
+    }catch(error){}
 
     hls=null;
   }
 
   if(tsPlayer){
+
     try{
       tsPlayer.unload();
     }catch(error){}
@@ -327,545 +368,129 @@ function stop(){
 }
 
 
-function play(name,url,btn){
-  currentChannel={
-    name:name,
-    url:url
-  };
-
-  currentBtn=btn;
-
-  retryCount=0;
-  stuckCount=0;
-  lastTime=0;
-
-  manualStop=false;
-  lastPlayStart=Date.now();
-
-  clearTimeout(waitTimer);
-
-  isRecovering=false;
-
-  document
-    .querySelectorAll("button.channel")
-    .forEach(button=>{
-      button.classList.remove("active");
-    });
-
-  if(btn){
-    btn.classList.add("active");
-  }
-
-  title.innerText="📺 "+name;
-
-  status("جاري تشغيل البث...");
-
-  stop();
-
-  manualStop=false;
-  lastPlayStart=Date.now();
-
-  const normalizedUrl=url.toLowerCase();
-
-  if(normalizedUrl.includes(".m3u8")){
-    playHLS(url);
-  }else{
-    playTS(url);
-  }
-}
-
-
-function playHLS(url){
-  if(window.Hls && Hls.isSupported()){
-
-    hls=new Hls({
-      enableWorker:true,
-      lowLatencyMode:false,
-
-      liveSyncDurationCount:6,
-      liveMaxLatencyDurationCount:20,
-
-      maxBufferLength:60,
-      maxMaxBufferLength:120,
-      backBufferLength:30,
-
-      manifestLoadingTimeOut:20000,
-      fragLoadingTimeOut:30000,
-
-      manifestLoadingMaxRetry:10,
-      fragLoadingMaxRetry:10,
-      levelLoadingMaxRetry:10
-    });
-
-    hls.loadSource(url);
-    hls.attachMedia(video);
-
-    hls.on(Hls.Events.MANIFEST_PARSED,()=>{
-      video
-        .play()
-        .then(()=>{
-          status("✅ البث يعمل الآن");
-        })
-        .catch(()=>{
-          status("اضغط تشغيل من شاشة الفيديو");
-        });
-    });
-
-    hls.on(Hls.Events.ERROR,(event,data)=>{
-      console.error("HLS ERROR:",data);
-
-      if(!data.fatal){
-        return;
-      }
-
-      if(data.type===Hls.ErrorTypes.NETWORK_ERROR){
-
-        status("ضعف في الاتصال... جاري الانتظار");
-
-        try{
-          hls.startLoad();
-        }catch(error){}
-
-        delayedReplay(15000);
-
-      }else if(data.type===Hls.ErrorTypes.MEDIA_ERROR){
-
-        status("مشكلة في الفيديو... محاولة إصلاح");
-
-        try{
-          hls.recoverMediaError();
-        }catch(error){}
-
-      }else{
-
-        status("حدث خطأ في البث... جاري الاستعادة");
-
-        delayedReplay(8000);
-      }
-    });
-
-  }else if(video.canPlayType("application/vnd.apple.mpegurl")){
-
-    video.src=url;
-
-    video
-      .play()
-      .then(()=>{
-        status("✅ البث يعمل الآن");
-      })
-      .catch(()=>{
-        status("اضغط تشغيل من شاشة الفيديو");
-      });
-
-  }else{
-
-    fallback(url);
-  }
-}
-
-
-function playTS(url){
-  if(
-    window.mpegts &&
-    mpegts.getFeatureList().mseLivePlayback
-  ){
-
-    tsPlayer=mpegts.createPlayer({
-      type:"mpegts",
-      isLive:true,
-      url:url
-    },{
-      enableStashBuffer:true,
-      stashInitialSize:1024*1024,
-
-      autoCleanupSourceBuffer:true,
-      autoCleanupMaxBackwardDuration:60,
-      autoCleanupMinBackwardDuration:20,
-
-      lazyLoad:false,
-      seekType:"range"
-    });
-
-    tsPlayer.attachMediaElement(video);
-
-    tsPlayer.load();
-
-    video
-      .play()
-      .then(()=>{
-        status("✅ البث يعمل الآن");
-      })
-      .catch(()=>{
-        status("اضغط تشغيل من شاشة الفيديو");
-      });
-
-    tsPlayer.on(mpegts.Events.ERROR,(errorType,errorDetail,errorInfo)=>{
-      console.error(
-        "MPEGTS ERROR:",
-        errorType,
-        errorDetail,
-        errorInfo
-      );
-
-      status("ضعف مؤقت في البث... جاري الانتظار");
-
-      delayedReplay(15000);
-    });
-
-  }else{
-
-    fallback(url);
-  }
-}
-
-
-function fallback(url){
-  video.src=url;
-
-  video
-    .play()
-    .then(()=>{
-      status("✅ البث يعمل الآن");
-    })
-    .catch(error=>{
-      console.error("VIDEO ERROR:",error);
-
-      status(
-        "⚠️ هذا الرابط لا يعمل في المتصفح أو يحتاج مشغل خارجي"
-      );
-    });
-}
-
-
-function delayedReplay(delay=15000){
-  if(manualStop){
-    return;
-  }
-
-  if(!currentChannel || !currentBtn){
-    return;
-  }
-
-  clearTimeout(waitTimer);
-
-  waitTimer=setTimeout(()=>{
-    replay();
-  },delay);
-}
-
-
-function replay(force=false){
-  if(manualStop){
-    return;
-  }
-
-  if(!currentChannel || !currentBtn){
-    return;
-  }
-
-  if(isRecovering){
-    return;
-  }
-
-  const now=Date.now();
-
-  if(
-    !force &&
-    now-lastPlayStart<20000
-  ){
-    status("⏳ جاري انتظار استقرار البث...");
-    return;
-  }
-
-  isRecovering=true;
-
-  retryCount++;
-
-  if(retryCount<=6){
-
-    status(
-      "🔄 جاري استعادة البث... المحاولة "+retryCount
-    );
-
-    const channel=currentChannel;
-    const button=currentBtn;
-
-    setTimeout(()=>{
-      isRecovering=false;
-
-      play(
-        channel.name,
-        channel.url,
-        button
-      );
-    },3000);
-
-  }else{
-
-    isRecovering=false;
-
-    status(
-      "⚠️ البث غير مستقر حالياً، جرّب MX Player أو VLC"
-    );
-  }
-}
-
-
-function reloadCurrent(){
-  if(currentChannel && currentBtn){
-
-    retryCount=0;
-
-    play(
-      currentChannel.name,
-      currentChannel.url,
-      currentBtn
-    );
-
-  }else{
-
-    status("اختر قناة أولاً");
-  }
-}
-
-
-function fullScreen(){
-  if(video.requestFullscreen){
-    video.requestFullscreen();
-  }else if(video.webkitRequestFullscreen){
-    video.webkitRequestFullscreen();
-  }
-}
-
-
-function openMX(){
-  if(!currentChannel){
-    status("اختر قناة أولاً");
-    return;
-  }
-
-  const url=currentChannel.url;
-
-  window.location.href=
-    "intent:"+
-    url.replace(/^https?:/,"")+
-    "#Intent;scheme=http;package=com.mxtech.videoplayer.ad;type=video/*;end";
-}
-
-
-function openVLC(){
-  if(!currentChannel){
-    status("اختر قناة أولاً");
-    return;
-  }
-
-  const url=currentChannel.url;
-
-  window.location.href=
-    "intent:"+
-    url.replace(/^https?:/,"")+
-    "#Intent;scheme=http;package=org.videolan.vlc;type=video/*;end";
-}
-
-
-video.addEventListener("playing",()=>{
-  retryCount=0;
-  stuckCount=0;
-  isRecovering=false;
-
-  clearTimeout(waitTimer);
-
-  status("✅ البث يعمل الآن");
-});
-
-
-video.addEventListener("waiting",()=>{
-  status("⏳ جاري التخزين المؤقت...");
-
-  clearTimeout(waitTimer);
-
-  waitTimer=setTimeout(()=>{
-
-    if(
-      !video.paused &&
-      currentChannel
-    ){
-      status(
-        "🔄 البث تأخر أكثر من اللازم... محاولة استعادة"
-      );
-
-      replay();
-    }
-
-  },20000);
-});
-
-
-video.addEventListener("stalled",()=>{
-  status(
-    "⏳ ضعف مؤقت في الاتصال... جاري الانتظار"
-  );
-
-  clearTimeout(waitTimer);
-
-  waitTimer=setTimeout(()=>{
-
-    if(
-      !video.paused &&
-      currentChannel
-    ){
-      status(
-        "🔄 البث متوقف... محاولة استعادة"
-      );
-
-      replay();
-    }
-
-  },20000);
-});
-
-
-video.addEventListener("error",()=>{
-  console.error(
-    "VIDEO ELEMENT ERROR:",
-    video.error
-  );
-
-  status("⚠️ حدث خطأ في البث");
-
-  clearTimeout(waitTimer);
-
-  waitTimer=setTimeout(()=>{
-    replay(true);
-  },6000);
-});
-
-
-video.addEventListener("ended",()=>{
-  status("⚠️ توقف البث");
-
-  clearTimeout(waitTimer);
-
-  waitTimer=setTimeout(()=>{
-    replay(true);
-  },5000);
-});
-
-
-setInterval(()=>{
-  if(!currentChannel){
-    return;
-  }
-
-  if(video.paused){
-    return;
-  }
-
-  if(video.readyState<2){
-    return;
-  }
-
-  if(video.currentTime===lastTime){
-    stuckCount++;
-  }else{
-    stuckCount=0;
-    lastTime=video.currentTime;
-  }
-
-  if(stuckCount>=12){
-
-    stuckCount=0;
-
-    status(
-      "🔄 البث عالق منذ فترة... محاولة استعادة"
-    );
-
-    replay();
-  }
-
-},3000);
-
-
-/*
-=================================
-قراءة ملف M3U
-=================================
-*/
-
 function parseM3U(text){
+
   const lines=text
     .replace(/^\uFEFF/,"")
-    .split(/\r?\n/)
-    .map(line=>line.trim());
+    .split(/\r?\n/);
 
   const channels=[];
 
-  let name="قناة بدون اسم";
+  let name="قناة";
 
   for(const line of lines){
 
-    if(!line){
+    const value=line.trim();
+
+    if(!value){
       continue;
     }
 
-    if(line.startsWith("#EXTINF")){
+    if(value.startsWith("#EXTINF")){
 
-      const commaIndex=line.indexOf(",");
+      const index=value.lastIndexOf(",");
 
-      if(commaIndex!==-1){
+      name=
+        index>=0
+          ? value.slice(index+1).trim()
+          : "قناة";
 
-        name=line
-          .substring(commaIndex+1)
-          .trim();
-
-      }else{
-
-        name="قناة بدون اسم";
-      }
-
-      continue;
-    }
-
-    if(line.startsWith("#")){
-      continue;
-    }
-
-    if(
-      line.startsWith("http://") ||
-      line.startsWith("https://") ||
-      line.startsWith("/")
-    ){
+    }else if(!value.startsWith("#")){
 
       channels.push({
-        name:name || "قناة بدون اسم",
-        url:line
+        name:name || "قناة",
+        url:value
       });
 
-      name="قناة بدون اسم";
+      name="قناة";
     }
   }
-
-  console.log(
-    "PARSED CHANNELS:",
-    channels.length
-  );
-
-  console.log(
-    "FIRST CHANNELS:",
-    channels.slice(0,5)
-  );
 
   return channels;
 }
 
 
-/*
-=================================
-عرض القنوات
-=================================
-*/
+async function loadChannels(){
 
-function renderChannels(channels){
+  status("⏳ جاري تحميل القنوات...");
+
+  counter.innerText="0 قناة";
+
+  try{
+
+    const response=await fetch(
+      api("/api/m3u/default"),
+      {
+        cache:"no-store"
+      }
+    );
+
+    console.log(
+      "M3U STATUS:",
+      response.status
+    );
+
+    if(!response.ok){
+
+      throw new Error(
+        "HTTP "+response.status
+      );
+    }
+
+    const text=
+      await response.text();
+
+    allChannels=
+      parseM3U(text);
+
+    if(!allChannels.length){
+
+      throw new Error(
+        "قائمة القنوات فارغة"
+      );
+    }
+
+    renderChannels(
+      allChannels
+    );
+
+    status(
+      "✅ تم تحميل "+
+      allChannels.length+
+      " قناة بنجاح"
+    );
+
+  }catch(error){
+
+    console.error(
+      "LOAD CHANNEL ERROR:",
+      error
+    );
+
+    allChannels=[];
+
+    counter.innerText="0 قناة";
+
+    status(
+      "❌ فشل تحميل القنوات: "+
+      error.message
+    );
+
+    list.innerHTML=
+      '<div class="empty">'+
+      '❌ تعذر تحميل قائمة القنوات'+
+      '<br><br>'+
+      'المسار: /api/m3u/default'+
+      '<br>'+
+      'الخطأ: '+
+      error.message+
+      '</div>';
+  }
+}
+
+
+function renderChannels(channels=allChannels){
+
   list.innerHTML="";
 
   counter.innerText=
@@ -888,6 +513,13 @@ function renderChannels(channels){
 
     button.className="channel";
 
+    if(
+      currentChannel &&
+      currentChannel.url===channel.url
+    ){
+      button.classList.add("active");
+    }
+
     const icon=
       document.createElement("span");
 
@@ -905,9 +537,8 @@ function renderChannels(channels){
 
     button.onclick=()=>{
 
-      play(
-        channel.name,
-        channel.url,
+      playChannel(
+        channel,
         button
       );
     };
@@ -917,178 +548,570 @@ function renderChannels(channels){
 }
 
 
-/*
-=================================
-البحث
-=================================
-*/
-
-searchBox.addEventListener("input",()=>{
-
-  const query=
-    searchBox.value
-      .trim()
-      .toLowerCase();
-
-  const filtered=
-    allChannels.filter(channel=>
-      channel.name
-        .toLowerCase()
-        .includes(query)
-    );
-
-  renderChannels(filtered);
-});
-
-
-/*
-=================================
-تحميل ملف القنوات
-=================================
-*/
-
-async function loadChannels(){
-
-  const fileUrl=
-    "./default_channels.m3u8?v="+
-    Date.now();
-
-  status(
-    "⏳ جاري تحميل ملف القنوات..."
-  );
-
-  counter.innerText="0 قناة";
+async function detectType(url){
 
   try{
 
-    console.log(
-      "LOADING CHANNEL FILE:",
-      fileUrl
-    );
-
     const response=await fetch(
-      fileUrl,
-      {
-        method:"GET",
-        cache:"no-store"
-      }
-    );
-
-    console.log(
-      "CHANNEL FILE STATUS:",
-      response.status
-    );
-
-    console.log(
-      "CHANNEL FILE URL:",
-      response.url
-    );
-
-    console.log(
-      "CHANNEL FILE CONTENT TYPE:",
-      response.headers.get("content-type")
+      api(
+        `/api/stream/probe?url=${encodeURIComponent(url)}`
+      )
     );
 
     if(!response.ok){
-
       throw new Error(
-        "HTTP "+response.status
+        "Probe HTTP "+response.status
       );
     }
 
-    const text=
-      await response.text();
+    const data=
+      await response.json();
 
-    console.log(
-      "CHANNEL FILE LENGTH:",
-      text.length
-    );
-
-    console.log(
-      "CHANNEL FILE START:",
-      text.substring(0,500)
-    );
-
-    if(!text.trim()){
-
-      throw new Error(
-        "ملف القنوات فارغ"
-      );
-    }
-
-    const cleanStart=
-      text
-        .replace(/^\uFEFF/,"")
-        .trim()
-        .toLowerCase();
-
-    if(
-      cleanStart.startsWith("<!doctype") ||
-      cleanStart.startsWith("<html")
-    ){
-
-      throw new Error(
-        "السيرفر أعاد صفحة HTML بدل ملف القنوات"
-      );
-    }
-
-    allChannels=
-      parseM3U(text);
-
-    if(!allChannels.length){
-
-      throw new Error(
-        "لم يتم العثور على روابط قنوات داخل الملف"
-      );
-    }
-
-    status(
-      "✅ تم تحميل "+
-      allChannels.length+
-      " قناة بنجاح"
-    );
-
-    renderChannels(
-      allChannels
-    );
+    return data.type==="ts"
+      ? "ts"
+      : "hls";
 
   }catch(error){
 
     console.error(
-      "CHANNEL LOAD ERROR:",
+      "PROBE ERROR:",
       error
     );
 
-    allChannels=[];
-
-    counter.innerText=
-      "0 قناة";
-
-    status(
-      "❌ فشل تحميل ملف القنوات: "+
-      error.message
-    );
-
-    list.innerHTML=
-      '<div class="empty">'+
-      '❌ تعذر تحميل ملف القنوات'+
-      '<br><br>'+
-      'الملف المطلوب: default_channels.m3u8'+
-      '<br>'+
-      'الخطأ: '+
-      error.message+
-      '</div>';
+    return url
+      .toLowerCase()
+      .includes(".m3u8")
+        ? "hls"
+        : "ts";
   }
 }
 
 
-/*
-=================================
-بدء تحميل القنوات
-=================================
-*/
+async function playChannel(channel,button){
+
+  currentChannel=channel;
+  currentBtn=button;
+
+  localStorage.setItem(
+    "last_channel_url",
+    channel.url
+  );
+
+  document
+    .querySelectorAll("button.channel")
+    .forEach(btn=>{
+      btn.classList.remove("active");
+    });
+
+  if(button){
+    button.classList.add("active");
+  }
+
+  title.innerText=
+    "📺 "+channel.name;
+
+  clearPlayer();
+
+  status(
+    "⏳ جاري تجهيز البث..."
+  );
+
+  const type=
+    await detectType(channel.url);
+
+  const url=
+    proxied(channel.url);
+
+  console.log(
+    "CHANNEL:",
+    channel.name
+  );
+
+  console.log(
+    "TYPE:",
+    type
+  );
+
+  console.log(
+    "PROXY URL:",
+    url
+  );
+
+  if(type==="hls"){
+
+    playHLS(url);
+
+  }else{
+
+    playTS(url);
+  }
+
+  startMonitor();
+}
+
+
+function playHLS(url){
+
+  if(
+    window.Hls &&
+    Hls.isSupported()
+  ){
+
+    hls=new Hls({
+
+      enableWorker:true,
+
+      lowLatencyMode:false,
+
+      liveDurationInfinity:true,
+
+      liveSyncDurationCount:8,
+
+      liveMaxLatencyDurationCount:30,
+
+      maxBufferLength:90,
+
+      maxMaxBufferLength:180,
+
+      backBufferLength:60,
+
+      manifestLoadingTimeOut:30000,
+
+      fragLoadingTimeOut:45000,
+
+      levelLoadingTimeOut:30000,
+
+      manifestLoadingMaxRetry:15,
+
+      fragLoadingMaxRetry:15,
+
+      levelLoadingMaxRetry:15,
+
+      manifestLoadingRetryDelay:2000,
+
+      fragLoadingRetryDelay:2000,
+
+      levelLoadingRetryDelay:2000
+    });
+
+    hls.loadSource(url);
+
+    hls.attachMedia(video);
+
+    hls.on(
+      Hls.Events.MANIFEST_PARSED,
+      ()=>{
+
+        video
+          .play()
+          .then(()=>{
+
+            status(
+              "✅ البث يعمل الآن"
+            );
+
+          })
+          .catch(()=>{
+
+            status(
+              "اضغط تشغيل من شاشة الفيديو"
+            );
+          });
+      }
+    );
+
+
+    hls.on(
+      Hls.Events.ERROR,
+      (event,data)=>{
+
+        console.error(
+          "HLS ERROR:",
+          data
+        );
+
+        if(!data.fatal){
+          return;
+        }
+
+        if(
+          data.type===
+          Hls.ErrorTypes.NETWORK_ERROR
+        ){
+
+          status(
+            "ضعف بالشبكة... محاولة إصلاح"
+          );
+
+          try{
+            hls.startLoad();
+          }catch(error){}
+
+          return;
+        }
+
+        if(
+          data.type===
+          Hls.ErrorTypes.MEDIA_ERROR
+        ){
+
+          status(
+            "إصلاح الفيديو..."
+          );
+
+          try{
+            hls.recoverMediaError();
+          }catch(error){}
+
+          return;
+        }
+
+        softReload();
+      }
+    );
+
+  }else if(
+    video.canPlayType(
+      "application/vnd.apple.mpegurl"
+    )
+  ){
+
+    video.src=url;
+
+    video
+      .play()
+      .then(()=>{
+
+        status(
+          "✅ البث يعمل الآن"
+        );
+
+      })
+      .catch(()=>{
+
+        status(
+          "اضغط تشغيل من شاشة الفيديو"
+        );
+      });
+
+  }else{
+
+    status(
+      "هذا الجهاز لا يدعم HLS"
+    );
+  }
+}
+
+
+function playTS(url){
+
+  if(
+    window.mpegts &&
+    mpegts.getFeatureList()
+      .mseLivePlayback
+  ){
+
+    tsPlayer=
+      mpegts.createPlayer(
+        {
+          type:"mpegts",
+          isLive:true,
+          url:url
+        },
+        {
+          enableStashBuffer:true,
+
+          stashInitialSize:
+            1024*1024*2,
+
+          liveBufferLatencyChasing:
+            false
+        }
+      );
+
+    tsPlayer.attachMediaElement(
+      video
+    );
+
+    tsPlayer.load();
+
+    video
+      .play()
+      .then(()=>{
+
+        status(
+          "✅ البث يعمل الآن"
+        );
+
+      })
+      .catch(()=>{
+
+        status(
+          "اضغط تشغيل من شاشة الفيديو"
+        );
+      });
+
+
+    tsPlayer.on(
+      mpegts.Events.ERROR,
+      (
+        errorType,
+        errorDetail,
+        errorInfo
+      )=>{
+
+        console.error(
+          "MPEGTS ERROR:",
+          errorType,
+          errorDetail,
+          errorInfo
+        );
+
+        status(
+          "⚠️ ضعف في البث... جاري الانتظار"
+        );
+      }
+    );
+
+  }else{
+
+    video.src=url;
+
+    video
+      .play()
+      .then(()=>{
+
+        status(
+          "✅ البث يعمل الآن"
+        );
+
+      })
+      .catch(()=>{
+
+        status(
+          "اضغط تشغيل من شاشة الفيديو"
+        );
+      });
+  }
+}
+
+
+function startMonitor(){
+
+  if(monitorTimer){
+
+    clearInterval(
+      monitorTimer
+    );
+  }
+
+  lastTime=0;
+
+  stuckSince=null;
+
+  monitorTimer=setInterval(()=>{
+
+    if(
+      !currentChannel ||
+      video.paused
+    ){
+      return;
+    }
+
+    const now=
+      Date.now();
+
+    if(
+      video.currentTime===
+      lastTime
+    ){
+
+      if(!stuckSince){
+
+        stuckSince=now;
+      }
+
+      const stuckFor=
+        now-stuckSince;
+
+      if(
+        stuckFor>25000 &&
+        hls
+      ){
+
+        status(
+          "⏳ البث متوقف مؤقتًا... محاولة إصلاح"
+        );
+
+        try{
+          hls.startLoad();
+        }catch(error){}
+      }
+
+      if(
+        stuckFor>60000
+      ){
+
+        softReload();
+      }
+
+    }else{
+
+      stuckSince=null;
+
+      lastTime=
+        video.currentTime;
+
+      status(
+        "✅ البث يعمل الآن"
+      );
+    }
+
+  },5000);
+}
+
+
+function softReload(){
+
+  const now=
+    Date.now();
+
+  if(
+    now-lastReloadAt<
+    90000
+  ){
+
+    status(
+      "⏳ البث ضعيف... ننتظر قبل إعادة المحاولة"
+    );
+
+    return;
+  }
+
+  lastReloadAt=now;
+
+  if(currentChannel){
+
+    status(
+      "🔄 إعادة اتصال هادئة..."
+    );
+
+    playChannel(
+      currentChannel,
+      currentBtn
+    );
+  }
+}
+
+
+function reloadCurrent(){
+
+  lastReloadAt=0;
+
+  if(currentChannel){
+
+    playChannel(
+      currentChannel,
+      currentBtn
+    );
+
+  }else{
+
+    status(
+      "اختر قناة أولاً"
+    );
+  }
+}
+
+
+function fullScreen(){
+
+  if(video.requestFullscreen){
+
+    video.requestFullscreen();
+
+  }else if(
+    video.webkitRequestFullscreen
+  ){
+
+    video.webkitRequestFullscreen();
+  }
+}
+
+
+function openMX(){
+
+  if(!currentChannel){
+
+    status(
+      "اختر قناة أولاً"
+    );
+
+    return;
+  }
+
+  const url=
+    proxied(
+      currentChannel.url
+    );
+
+  window.location.href=
+    "intent:"+
+    url.replace(/^https?:/,"")+
+    "#Intent;scheme=http;package=com.mxtech.videoplayer.ad;type=video/*;end";
+}
+
+
+function openVLC(){
+
+  if(!currentChannel){
+
+    status(
+      "اختر قناة أولاً"
+    );
+
+    return;
+  }
+
+  const url=
+    proxied(
+      currentChannel.url
+    );
+
+  window.location.href=
+    "intent:"+
+    url.replace(/^https?:/,"")+
+    "#Intent;scheme=http;package=org.videolan.vlc;type=video/*;end";
+}
+
+
+searchBox.addEventListener(
+  "input",
+  ()=>{
+
+    const query=
+      searchBox.value
+        .trim()
+        .toLowerCase();
+
+    const filtered=
+      allChannels.filter(
+        channel=>
+          channel.name
+            .toLowerCase()
+            .includes(query)
+      );
+
+    renderChannels(
+      filtered
+    );
+  }
+);
+
 
 loadChannels();
 
-</script></body>
+</script>
+
+</body>
 </html>
