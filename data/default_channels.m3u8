@@ -19,79 +19,67 @@ http://13.51.56.140/hls/dsmax2/index.m3u8
 http://13.51.56.140/hls/max4/index.m3u8
 #EXTM3U
 
-#EXTINF:-1 tvg-id="2392143" tvg-name="|WC| BEIN MAX 1 4k (SA)" tvg-logo="http://vodkom.com/worldcup/BEIN_SPORTS_1_MAX.png" group-title="WORLD CUP 2026", |WC| BEIN MAX 1 4k (SA)
-http://sansatplus.net:88/live/02022056573173/HLcjXrgBxozgqEL/2392143.m3u8
-#EXTINF:-1 tvg-id="2392144" tvg-name="|WC| BEIN MAX 1 4K (NX)" tvg-logo="http://vodkom.com/worldcup/BEIN_SPORTS_1_MAX.png" group-title="WORLD CUP 2026", |WC| BEIN MAX 1 4K (NX)
-http://sansatplus.net:88/live/02022056573173/HLcjXrgBxozgqEL/2392144.m3u8
-#EXTINF:-1 tvg-id="2392146" tvg-name="|WC| BEIN MAX 1 FHD (SS)" tvg-logo="http://vodkom.com/worldcup/BEIN_SPORTS_1_MAX.png" group-title="WORLD CUP 2026", |WC| BEIN MAX 1 FHD (SS)
-http://sansatplus.net:88/live/02022056573173/HLcjXrgBxozgqEL/2392146.m3u8
-#EXTINF:-1 tvg-id="2392147" tvg-name="|WC| BEIN MAX 1 FHD (NX)" tvg-logo="http://vodkom.com/worldcup/BEIN_SPORTS_1_MAX.png" group-title="WORLD CUP 2026", |WC| BEIN MAX 1 FHD (NX)
-http://sansatplus.net:88/live/02022056573173/HLcjXrgBxozgqEL/2392147.m3u8
-#EXTINF:-1 tvg-id="2392148" tvg-name="|WC| BEIN MAX 1 FHD (MSH)" tvg-logo="http://vodkom.com/worldcup/BEIN_SPORTS_1_MAX.png" group-title="WORLD CUP 2026", |WC| BEIN MAX 1 FHD (MSH)
-http://sansatplus.net:88/live/02022056573173/HLcjXrgBxozgqEL/2392148.m3u8
-#EXTINF:-1 tvg-id="2392065" tvg-name="|WC| BEIN MAX 1 HD (SA)" tvg-logo="http://vodkom.com/worldcup/BEIN_SPORTS_1_MAX.png" group-title="WORLD CUP 2026", |WC| BEIN MAX 1 HD (SA)
-http://sansatplus.net:88/live/02022056573173/HLcjXrgBxozgqEL/2392065.m3u8
-#EXTINF:-1 tvg-id="2392152" tvg-name="|WC| BEIN MAX 1 HD (SS)" tvg-logo="http://vodkom.com/worldcup/BEIN_SPORTS_1_MAX.png" group-title="WORLD CUP 2026", |WC| BEIN MAX 1 HD (SS)
-http://sansatplus.net:88/live/02022056573173/HLcjXrgBxozgqEL/2392152.m3u8
-#EXTINF:-1 tvg-id="2392153" tvg-name="|WC| BEIN MAX 1 HD (NX)" tvg-logo="http://vodkom.com/worldcup/BEIN_SPORTS_1_MAX.png" group-title="WORLD CUP 2026", |WC| BEIN MAX 1 HD (NX)
-http://sansatplus.net:88/live/02022056573173/HLcjXrgBxozgqEL/2392153.m3u8
-#EXTINF:-1 tvg-id="2392154" tvg-name="|WC| BEIN MAX 1 HD (MSH)" tvg-logo="http://vodkom.com/worldcup/BEIN_SPORTS_1_MAX.png" group-title="WORLD CUP 2026", |WC| BEIN MAX 1 HD (MSH)
-http://sansatplus.net:88/live/02022056573173/HLcjXrgBxozgqEL/2392154.m3u8
-#EXTINF:-1 tvg-id="2392069" tvg-name="|WC| BEIN MAX 1 SD (SA)" tvg-logo="http://vodkom.com/worldcup/BEIN_SPORTS_1_MAX.png" group-title="WORLD CUP 2026", |WC| BEIN MAX 1 SD (SA)
-http://sansatplus.net:88/live/02022056573173/HLcjXrgBxozgqEL/2392069.m3u8
-#EXTINF:-1 tvg-id="2392158" tvg-name="|WC| BEIN MAX 1 SD (MSH)" tvg-logo="http://vodkom.com/worldcup/BEIN_SPORTS_1_MAX.png" group-title="WORLD CUP 2026", |WC| BEIN MAX 1 SD (MSH)
-http://sansatplus.net:88/live/02022056573173/HLcjXrgBxozgqEL/2392158.m3u8
-#EXTINF:-1 tvg-id="2392159" tvg-name="|WC| BEIN MAX 1 SD (NX)" tvg-logo="http://vodkom.com/worldcup/BEIN_SPORTS_1_MAX.png" group-title="WORLD CUP 2026", |WC| BEIN MAX 1 SD (NX)
-http://sansatplus.net:88/live/02022056573173/HLcjXrgBxozgqEL/2392159.m3u8
-#EXTINF:-1 tvg-id="2392062" tvg-name="|WC| BEIN MAX 2 4k (SA)" tvg-logo="http://vodkom.com/worldcup/BEIN_SPORTS_2_MAX.png" group-title="WORLD CUP 2026", |WC| BEIN MAX 2 4k (SA)
-http://sansatplus.net:88/live/02022056573173/HLcjXrgBxozgqEL/2392062.m3u8
-#EXTINF:-1 tvg-id="2392145" tvg-name="|WC| BEIN MAX 2 4K (NX)" tvg-logo="http://vodkom.com/worldcup/BEIN_SPORTS_2_MAX.png" group-title="WORLD CUP 2026", |WC| BEIN MAX 2 4K (NX)
-http://sansatplus.net:88/live/02022056573173/HLcjXrgBxozgqEL/2392145.m3u8
-#EXTINF:-1 tvg-id="2392149" tvg-name="|WC| BEIN MAX 2 FHD (SS)" tvg-logo="http://vodkom.com/worldcup/BEIN_SPORTS_2_MAX.png" group-title="WORLD CUP 2026", |WC| BEIN MAX 2 FHD (SS)
-http://sansatplus.net:88/live/02022056573173/HLcjXrgBxozgqEL/2392149.m3u8
-#EXTINF:-1 tvg-id="2392150" tvg-name="|WC| BEIN MAX 2 FHD (NX)" tvg-logo="http://vodkom.com/worldcup/BEIN_SPORTS_2_MAX.png" group-title="WORLD CUP 2026", |WC| BEIN MAX 2 FHD (NX)
-http://sansatplus.net:88/live/02022056573173/HLcjXrgBxozgqEL/2392150.m3u8
-#EXTINF:-1 tvg-id="2392151" tvg-name="|WC| BEIN MAX 2 FHD (MSH)" tvg-logo="http://vodkom.com/worldcup/BEIN_SPORTS_2_MAX.png" group-title="WORLD CUP 2026", |WC| BEIN MAX 2 FHD (MSH)
-http://sansatplus.net:88/live/02022056573173/HLcjXrgBxozgqEL/2392151.m3u8
-#EXTINF:-1 tvg-id="2392155" tvg-name="|WC| BEIN MAX 2 HD (SS)" tvg-logo="http://vodkom.com/worldcup/BEIN_SPORTS_2_MAX.png" group-title="WORLD CUP 2026", |WC| BEIN MAX 2 HD (SS)
-http://sansatplus.net:88/live/02022056573173/HLcjXrgBxozgqEL/2392155.m3u8
-#EXTINF:-1 tvg-id="2392156" tvg-name="|WC| BEIN MAX 2 HD (NX)" tvg-logo="http://vodkom.com/worldcup/BEIN_SPORTS_2_MAX.png" group-title="WORLD CUP 2026", |WC| BEIN MAX 2 HD (NX)
-http://sansatplus.net:88/live/02022056573173/HLcjXrgBxozgqEL/2392156.m3u8
-#EXTINF:-1 tvg-id="2392157" tvg-name="|WC| BEIN MAX 2 HD (MSH)" tvg-logo="http://vodkom.com/worldcup/BEIN_SPORTS_2_MAX.png" group-title="WORLD CUP 2026", |WC| BEIN MAX 2 HD (MSH)
-http://sansatplus.net:88/live/02022056573173/HLcjXrgBxozgqEL/2392157.m3u8
-#EXTINF:-1 tvg-id="2392066" tvg-name="|WC| BEIN MAX 2 HD (SA)" tvg-logo="http://vodkom.com/worldcup/BEIN_SPORTS_2_MAX.png" group-title="WORLD CUP 2026", |WC| BEIN MAX 2 HD (SA)
-http://sansatplus.net:88/live/02022056573173/HLcjXrgBxozgqEL/2392066.m3u8
-#EXTINF:-1 tvg-id="2392070" tvg-name="|WC| BEIN MAX 2 SD (SA)" tvg-logo="http://vodkom.com/worldcup/BEIN_SPORTS_2_MAX.png" group-title="WORLD CUP 2026", |WC| BEIN MAX 2 SD (SA)
-http://sansatplus.net:88/live/02022056573173/HLcjXrgBxozgqEL/2392070.m3u8
-#EXTINF:-1 tvg-id="2392160" tvg-name="|WC| BEIN MAX 2 SD (MSH)" tvg-logo="http://vodkom.com/worldcup/BEIN_SPORTS_2_MAX.png" group-title="WORLD CUP 2026", |WC| BEIN MAX 2 SD (MSH)
-http://sansatplus.net:88/live/02022056573173/HLcjXrgBxozgqEL/2392160.m3u8
-#EXTINF:-1 tvg-id="2392161" tvg-name="|WC| BEIN MAX 2 SD (NX)" tvg-logo="http://vodkom.com/worldcup/BEIN_SPORTS_2_MAX.png" group-title="WORLD CUP 2026", |WC| BEIN MAX 2 SD (NX)
-http://sansatplus.net:88/live/02022056573173/HLcjXrgBxozgqEL/2392161.m3u8
-#EXTINF:-1 tvg-id="2392063" tvg-name="|WC| BEIN MAX 3 4k (SA)" tvg-logo="http://vodkom.com/worldcup/BEIN_SPORTS_3_MAX.png" group-title="WORLD CUP 2026", |WC| BEIN MAX 3 4k (SA)
-http://sansatplus.net:88/live/02022056573173/HLcjXrgBxozgqEL/2392063.m3u8
-#EXTINF:-1 tvg-id="2395615" tvg-name="|WC| BEIN MAX 3 4K (MX)" tvg-logo="http://vodkom.com/worldcup/BEIN_SPORTS_3_MAX.png" group-title="WORLD CUP 2026", |WC| BEIN MAX 3 4K (MX)
-http://sansatplus.net:88/live/02022056573173/HLcjXrgBxozgqEL/2395615.m3u8
-#EXTINF:-1 tvg-id="2392064" tvg-name="|WC| BEIN MAX 4 4k (SA)" tvg-logo="http://vodkom.com/worldcup/BEIN_SPORTS_4_MAX.png" group-title="WORLD CUP 2026", |WC| BEIN MAX 4 4k (SA)
-http://sansatplus.net:88/live/02022056573173/HLcjXrgBxozgqEL/2392064.m3u8
-#EXTINF:-1 tvg-id="2395616" tvg-name="|WC| BEIN MAX 4 4K (MX)" tvg-logo="http://vodkom.com/worldcup/BEIN_SPORTS_4_MAX.png" group-title="WORLD CUP 2026", |WC| BEIN MAX 4 4K (MX)
-http://sansatplus.net:88/live/02022056573173/HLcjXrgBxozgqEL/2395616.m3u8
-#EXTINF:-1 tvg-id="2395617" tvg-name="|WC| BEIN MAX 3 FHD (MX)" tvg-logo="http://vodkom.com/worldcup/BEIN_SPORTS_3_MAX.png" group-title="WORLD CUP 2026", |WC| BEIN MAX 3 FHD (MX)
-http://sansatplus.net:88/live/02022056573173/HLcjXrgBxozgqEL/2395617.m3u8
-#EXTINF:-1 tvg-id="2395618" tvg-name="|WC| BEIN MAX 4 FHD (MX)" tvg-logo="http://vodkom.com/worldcup/BEIN_SPORTS_4_MAX.png" group-title="WORLD CUP 2026", |WC| BEIN MAX 4 FHD (MX)
-http://sansatplus.net:88/live/02022056573173/HLcjXrgBxozgqEL/2395618.m3u8
-#EXTINF:-1 tvg-id="2392067" tvg-name="|WC| BEIN MAX 3 HD (SA)" tvg-logo="http://vodkom.com/worldcup/BEIN_SPORTS_3_MAX.png" group-title="WORLD CUP 2026", |WC| BEIN MAX 3 HD (SA)
-http://sansatplus.net:88/live/02022056573173/HLcjXrgBxozgqEL/2392067.m3u8
-#EXTINF:-1 tvg-id="2395619" tvg-name="|WC| BEIN MAX 3 HD (MX)" tvg-logo="http://vodkom.com/worldcup/BEIN_SPORTS_3_MAX.png" group-title="WORLD CUP 2026", |WC| BEIN MAX 3 HD (MX)
-http://sansatplus.net:88/live/02022056573173/HLcjXrgBxozgqEL/2395619.m3u8
-#EXTINF:-1 tvg-id="2392068" tvg-name="|WC| BEIN MAX 4 HD (SA)" tvg-logo="http://vodkom.com/worldcup/BEIN_SPORTS_4_MAX.png" group-title="WORLD CUP 2026", |WC| BEIN MAX 4 HD (SA)
-http://sansatplus.net:88/live/02022056573173/HLcjXrgBxozgqEL/2392068.m3u8
-#EXTINF:-1 tvg-id="2395620" tvg-name="|WC| BEIN MAX 4 HD (MX)" tvg-logo="http://vodkom.com/worldcup/BEIN_SPORTS_4_MAX.png" group-title="WORLD CUP 2026", |WC| BEIN MAX 4 HD (MX)
-http://sansatplus.net:88/live/02022056573173/HLcjXrgBxozgqEL/2395620.m3u8
-#EXTINF:-1 tvg-id="2392071" tvg-name="|WC| BEIN MAX 3 SD (SA)" tvg-logo="http://vodkom.com/worldcup/BEIN_SPORTS_3_MAX.png" group-title="WORLD CUP 2026", |WC| BEIN MAX 3 SD (SA)
-http://sansatplus.net:88/live/02022056573173/HLcjXrgBxozgqEL/2392071.m3u8
-#EXTINF:-1 tvg-id="2395621" tvg-name="|WC| BEIN MAX 3 SD (MX)" tvg-logo="http://vodkom.com/worldcup/BEIN_SPORTS_3_MAX.png" group-title="WORLD CUP 2026", |WC| BEIN MAX 3 SD (MX)
-http://sansatplus.net:88/live/02022056573173/HLcjXrgBxozgqEL/2395621.m3u8
-#EXTINF:-1 tvg-id="2392072" tvg-name="|WC| BEIN MAX 4 SD (SA)" tvg-logo="http://vodkom.com/worldcup/BEIN_SPORTS_4_MAX.png" group-title="WORLD CUP 2026", |WC| BEIN MAX 4 SD (SA)
-http://sansatplus.net:88/live/02022056573173/HLcjXrgBxozgqEL/2392072.m3u8
-#EXTINF:-1 tvg-id="2395622" tvg-name="|WC| BEIN MAX 4 SD (MX)" tvg-logo="http://vodkom.com/worldcup/BEIN_SPORTS_4_MAX.png" group-title="WORLD CUP 2026", |WC| BEIN MAX 4 SD (MX)
-http://sansatplus.net:88/live/02022056573173/HLcjXrgBxozgqEL/2395622.m3u8
+#EXTINF:-1 tvg-id="" tvg-name="AR| beIN MAX 1 SD" tvg-logo="http://kinglogo.newtvhd.com/logoo/LOGOMAX/SDMAX.png" group-title="AR| FIFA WORLD CUP ✪2026✪ كأس العالم",AR| beIN MAX 1 SD
+http://t77ert.top:8080/slhprddgzaewcn/KVBqsRgXhv9yAQR/248170
+#EXTINF:-1 tvg-id="" tvg-name="AR| beIN MAX 1 |SD|" tvg-logo="http://kinglogo.newtvhd.com/logoo/LOGOMAX/SDMAX.png" group-title="AR| FIFA WORLD CUP ✪2026✪ كأس العالم",AR| beIN MAX 1 |SD|
+http://t77ert.top:8080/slhprddgzaewcn/KVBqsRgXhv9yAQR/248182
+#EXTINF:-1 tvg-id="" tvg-name="AR| beIN MAX 1 HD" tvg-logo="http://kinglogo.newtvhd.com/logoo/LOGOMAX/HDMAX.png" group-title="AR| FIFA WORLD CUP ✪2026✪ كأس العالم",AR| beIN MAX 1 HD
+http://t77ert.top:8080/slhprddgzaewcn/KVBqsRgXhv9yAQR/248164
+#EXTINF:-1 tvg-id="" tvg-name="AR| beIN MAX 1 |HD|" tvg-logo="http://kinglogo.newtvhd.com/logoo/LOGOMAX/HDMAX.png" group-title="AR| FIFA WORLD CUP ✪2026✪ كأس العالم",AR| beIN MAX 1 |HD|
+http://t77ert.top:8080/slhprddgzaewcn/KVBqsRgXhv9yAQR/248180
+#EXTINF:-1 tvg-id="" tvg-name="AR| beIN MAX 1 FHD" tvg-logo="http://kinglogo.newtvhd.com/logoo/LOGOMAX/FHDMAX.png" group-title="AR| FIFA WORLD CUP ✪2026✪ كأس العالم",AR| beIN MAX 1 FHD
+http://t77ert.top:8080/slhprddgzaewcn/KVBqsRgXhv9yAQR/248152
+#EXTINF:-1 tvg-id="" tvg-name="AR| beIN MAX 1 4K" tvg-logo="http://kinglogo.newtvhd.com/logoo/LOGOMAX/4KMAX.png" group-title="AR| FIFA WORLD CUP ✪2026✪ كأس العالم",AR| beIN MAX 1 4K
+http://t77ert.top:8080/slhprddgzaewcn/KVBqsRgXhv9yAQR/248158
+#EXTINF:-1 tvg-id="" tvg-name="AR| beIN MAX 1 4K HEVC" tvg-logo="http://kinglogo.newtvhd.com/logoo/LOGOMAX/4KMAX.png" group-title="AR| FIFA WORLD CUP ✪2026✪ كأس العالم",AR| beIN MAX 1 4K HEVC
+http://t77ert.top:8080/slhprddgzaewcn/KVBqsRgXhv9yAQR/248178
+#EXTINF:-1 tvg-id="" tvg-name="AR| beIN MAX 1 8K" tvg-logo="http://kinglogo.newtvhd.com/logoo/LOGOMAX/4KMAX.png" group-title="AR| FIFA WORLD CUP ✪2026✪ كأس العالم",AR| beIN MAX 1 8K
+http://t77ert.top:8080/slhprddgzaewcn/KVBqsRgXhv9yAQR/248176
+#EXTINF:-1 tvg-id="" tvg-name="AR| beIN MAX 2 SD" tvg-logo="http://kinglogo.newtvhd.com/logoo/LOGOMAX/SDMAX.png" group-title="AR| FIFA WORLD CUP ✪2026✪ كأس العالم",AR| beIN MAX 2 SD
+http://t77ert.top:8080/slhprddgzaewcn/KVBqsRgXhv9yAQR/248171
+#EXTINF:-1 tvg-id="" tvg-name="AR| beIN MAX 2 |SD|" tvg-logo="http://kinglogo.newtvhd.com/logoo/LOGOMAX/SDMAX.png" group-title="AR| FIFA WORLD CUP ✪2026✪ كأس العالم",AR| beIN MAX 2 |SD|
+http://t77ert.top:8080/slhprddgzaewcn/KVBqsRgXhv9yAQR/248183
+#EXTINF:-1 tvg-id="" tvg-name="AR| beIN MAX 2 HD" tvg-logo="http://kinglogo.newtvhd.com/logoo/LOGOMAX/HDMAX.png" group-title="AR| FIFA WORLD CUP ✪2026✪ كأس العالم",AR| beIN MAX 2 HD
+http://t77ert.top:8080/slhprddgzaewcn/KVBqsRgXhv9yAQR/248165
+#EXTINF:-1 tvg-id="" tvg-name="AR| beIN MAX 2 |HD|" tvg-logo="http://kinglogo.newtvhd.com/logoo/LOGOMAX/SDMAX.png" group-title="AR| FIFA WORLD CUP ✪2026✪ كأس العالم",AR| beIN MAX 2 |HD|
+http://t77ert.top:8080/slhprddgzaewcn/KVBqsRgXhv9yAQR/248181
+#EXTINF:-1 tvg-id="" tvg-name="AR| beIN MAX 2 FHD" tvg-logo="http://kinglogo.newtvhd.com/logoo/LOGOMAX/FHDMAX.png" group-title="AR| FIFA WORLD CUP ✪2026✪ كأس العالم",AR| beIN MAX 2 FHD
+http://t77ert.top:8080/slhprddgzaewcn/KVBqsRgXhv9yAQR/248153
+#EXTINF:-1 tvg-id="" tvg-name="AR| beIN MAX 2 4K" tvg-logo="http://kinglogo.newtvhd.com/logoo/LOGOMAX/4KMAX.png" group-title="AR| FIFA WORLD CUP ✪2026✪ كأس العالم",AR| beIN MAX 2 4K
+http://t77ert.top:8080/slhprddgzaewcn/KVBqsRgXhv9yAQR/248159
+#EXTINF:-1 tvg-id="" tvg-name="AR| beIN MAX 2 4K HEVC" tvg-logo="http://kinglogo.newtvhd.com/logoo/LOGOMAX/4KMAX.png" group-title="AR| FIFA WORLD CUP ✪2026✪ كأس العالم",AR| beIN MAX 2 4K HEVC
+http://t77ert.top:8080/slhprddgzaewcn/KVBqsRgXhv9yAQR/248179
+#EXTINF:-1 tvg-id="" tvg-name="AR| beIN MAX 2 8K" tvg-logo="http://kinglogo.newtvhd.com/logoo/LOGOMAX/4KMAX.png" group-title="AR| FIFA WORLD CUP ✪2026✪ كأس العالم",AR| beIN MAX 2 8K
+http://t77ert.top:8080/slhprddgzaewcn/KVBqsRgXhv9yAQR/248177
+#EXTINF:-1 tvg-id="" tvg-name="AR| beIN MAX 3 SD" tvg-logo="http://kinglogo.newtvhd.com/logoo/LOGOMAX/SDMAX.png" group-title="AR| FIFA WORLD CUP ✪2026✪ كأس العالم",AR| beIN MAX 3 SD
+http://t77ert.top:8080/slhprddgzaewcn/KVBqsRgXhv9yAQR/248172
+#EXTINF:-1 tvg-id="" tvg-name="AR| beIN MAX 3 HD" tvg-logo="http://kinglogo.newtvhd.com/logoo/LOGOMAX/HDMAX.png" group-title="AR| FIFA WORLD CUP ✪2026✪ كأس العالم",AR| beIN MAX 3 HD
+http://t77ert.top:8080/slhprddgzaewcn/KVBqsRgXhv9yAQR/248166
+#EXTINF:-1 tvg-id="" tvg-name="AR| beIN MAX 3 FHD" tvg-logo="http://kinglogo.newtvhd.com/logoo/LOGOMAX/FHDMAX.png" group-title="AR| FIFA WORLD CUP ✪2026✪ كأس العالم",AR| beIN MAX 3 FHD
+http://t77ert.top:8080/slhprddgzaewcn/KVBqsRgXhv9yAQR/248154
+#EXTINF:-1 tvg-id="" tvg-name="AR| beIN MAX 3 4K" tvg-logo="http://kinglogo.newtvhd.com/logoo/LOGOMAX/4KMAX.png" group-title="AR| FIFA WORLD CUP ✪2026✪ كأس العالم",AR| beIN MAX 3 4K
+http://t77ert.top:8080/slhprddgzaewcn/KVBqsRgXhv9yAQR/248160
+#EXTINF:-1 tvg-id="" tvg-name="AR| beIN MAX 4 SD" tvg-logo="http://kinglogo.newtvhd.com/logoo/LOGOMAX/SDMAX.png" group-title="AR| FIFA WORLD CUP ✪2026✪ كأس العالم",AR| beIN MAX 4 SD
+http://t77ert.top:8080/slhprddgzaewcn/KVBqsRgXhv9yAQR/248173
+#EXTINF:-1 tvg-id="" tvg-name="AR| beIN MAX 4 HD" tvg-logo="http://kinglogo.newtvhd.com/logoo/LOGOMAX/HDMAX.png" group-title="AR| FIFA WORLD CUP ✪2026✪ كأس العالم",AR| beIN MAX 4 HD
+http://t77ert.top:8080/slhprddgzaewcn/KVBqsRgXhv9yAQR/248167
+#EXTINF:-1 tvg-id="" tvg-name="AR| beIN MAX 4 FHD" tvg-logo="http://kinglogo.newtvhd.com/logoo/LOGOMAX/FHDMAX.png" group-title="AR| FIFA WORLD CUP ✪2026✪ كأس العالم",AR| beIN MAX 4 FHD
+http://t77ert.top:8080/slhprddgzaewcn/KVBqsRgXhv9yAQR/248155
+#EXTINF:-1 tvg-id="" tvg-name="AR| beIN MAX 4 4K" tvg-logo="http://kinglogo.newtvhd.com/logoo/LOGOMAX/4KMAX.png" group-title="AR| FIFA WORLD CUP ✪2026✪ كأس العالم",AR| beIN MAX 4 4K
+http://t77ert.top:8080/slhprddgzaewcn/KVBqsRgXhv9yAQR/248161
+#EXTINF:-1 tvg-id="" tvg-name="AR| beIN MAX 5 SD" tvg-logo="http://kinglogo.newtvhd.com/logoo/LOGOMAX/SDMAX.png" group-title="AR| FIFA WORLD CUP ✪2026✪ كأس العالم",AR| beIN MAX 5 SD
+http://t77ert.top:8080/slhprddgzaewcn/KVBqsRgXhv9yAQR/248174
+#EXTINF:-1 tvg-id="" tvg-name="AR| beIN MAX 5 HD" tvg-logo="http://kinglogo.newtvhd.com/logoo/LOGOMAX/HDMAX.png" group-title="AR| FIFA WORLD CUP ✪2026✪ كأس العالم",AR| beIN MAX 5 HD
+http://t77ert.top:8080/slhprddgzaewcn/KVBqsRgXhv9yAQR/248168
+#EXTINF:-1 tvg-id="" tvg-name="AR| beIN MAX 5 FHD" tvg-logo="http://kinglogo.newtvhd.com/logoo/LOGOMAX/FHDMAX.png" group-title="AR| FIFA WORLD CUP ✪2026✪ كأس العالم",AR| beIN MAX 5 FHD
+http://t77ert.top:8080/slhprddgzaewcn/KVBqsRgXhv9yAQR/248156
+#EXTINF:-1 tvg-id="" tvg-name="AR| beIN MAX 5 4K" tvg-logo="http://kinglogo.newtvhd.com/logoo/LOGOMAX/4KMAX.png" group-title="AR| FIFA WORLD CUP ✪2026✪ كأس العالم",AR| beIN MAX 5 4K
+http://t77ert.top:8080/slhprddgzaewcn/KVBqsRgXhv9yAQR/248162
+#EXTINF:-1 tvg-id="" tvg-name="AR| beIN MAX 6 SD" tvg-logo="http://kinglogo.newtvhd.com/logoo/LOGOMAX/SDMAX.png" group-title="AR| FIFA WORLD CUP ✪2026✪ كأس العالم",AR| beIN MAX 6 SD
+http://t77ert.top:8080/slhprddgzaewcn/KVBqsRgXhv9yAQR/248175
+#EXTINF:-1 tvg-id="" tvg-name="AR| beIN MAX 6 HD" tvg-logo="http://kinglogo.newtvhd.com/logoo/LOGOMAX/HDMAX.png" group-title="AR| FIFA WORLD CUP ✪2026✪ كأس العالم",AR| beIN MAX 6 HD
+http://t77ert.top:8080/slhprddgzaewcn/KVBqsRgXhv9yAQR/248169
+#EXTINF:-1 tvg-id="" tvg-name="AR| beIN MAX 6 FHD" tvg-logo="http://kinglogo.newtvhd.com/logoo/LOGOMAX/FHDMAX.png" group-title="AR| FIFA WORLD CUP ✪2026✪ كأس العالم",AR| beIN MAX 6 FHD
+http://t77ert.top:8080/slhprddgzaewcn/KVBqsRgXhv9yAQR/248157
+#EXTINF:-1 tvg-id="" tvg-name="AR| beIN MAX 6 4K" tvg-logo="http://kinglogo.newtvhd.com/logoo/LOGOMAX/4KMAX.png" group-title="AR| FIFA WORLD CUP ✪2026✪ كأس العالم",AR| beIN MAX 6 4K
+http://t77ert.top:8080/slhprddgzaewcn/KVBqsRgXhv9yAQR/248163
